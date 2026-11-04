@@ -49,7 +49,7 @@ textarea{font:inherit;color:var(--ink)}
 .back::before{content:"";position:absolute;inset:10px;border:1.5px solid rgba(255,253,248,.7);border-radius:9px}
 .back::after{content:"☾ ✦ ☽";position:absolute;bottom:22px;left:0;right:0;text-align:center;color:#fffdf8;letter-spacing:.3em;font-size:13px;opacity:.85}
 .back .sym{font-size:46px;color:#fffdf8;text-shadow:0 0 18px rgba(255,255,255,.6)}
-body.art-back .back{background:#f6efe2 url(cards/back.webp) center/cover}
+body.art-back .back{background:#f6efe2 var(--backimg) center/cover}
 body.art-back .back::before,body.art-back .back::after,body.art-back .back .sym{display:none}
 .banner{display:flex;align-items:center;gap:10px;background:#fbf3e4;border:1px solid #ecdcbf;border-radius:14px;padding:10px 14px;margin:0 0 14px;font-size:13px}
 .banner span{flex:1}
@@ -293,9 +293,9 @@ SUITS.forEach(s=>s.data.forEach((d,j)=>{
 }));
 /* 牌組：每套牌放在 cards/<資料夾>/ 裡，檔名都一樣 */
 const DECKS={
-  rws:{name:'傳統偉特塔羅',dir:'rws',ratio:286/513,ready:true},
-  forest:{name:'森林小動物',dir:'forest',ratio:2/3,ready:true},
-  dudu:{name:'嘟嘟一家',dir:'dudu',ratio:2/3,ready:false},
+  rws:{name:'傳統偉特塔羅',dir:'rws',ratio:286/513,ready:true,back:'cards/rws/back.webp'},
+  forest:{name:'森林小動物',dir:'forest',ratio:2/3,ready:true,back:'cards/forest/back.webp'},
+  dudu:{name:'嘟嘟一家',dir:'dudu',ratio:2/3,ready:false,back:'cards/dudu/back.webp'},
 };
 const curDeck=()=>{const d=(DB.settings||{}).deck;return DECKS[d]&&DECKS[d].ready?d:'forest';};
 const deckOf=rec=>(rec&&DECKS[rec.deck]&&DECKS[rec.deck].ready)?rec.deck:'forest';
@@ -316,11 +316,16 @@ const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const WD='日一二三四五六';
 function prettyDate(k){const [y,m,d]=k.split('-').map(Number);const dt=new Date(y,m-1,d);return `${y} 年 ${m} 月 ${d} 日（${WD[dt.getDay()]}）`;}
 const MOODS=['🥰','😊','😐','😔','😣'];
-const BACKS={art:['森林插畫','',''],blue:['霧藍','#9fb2c2','#7f95a8'],milk:['奶茶','#d8c3a8','#b39878'],rose:['豆沙粉','#d9b5ad','#b78d85'],
+/* 牌背：auto = 跟著牌組（偉特用偉特牌背、森林用狐狸兔子、嘟嘟一家用專屬牌背） */
+const BACKS={auto:['跟著牌組','',''],forestArt:['森林插畫','',''],rwsArt:['經典偉特','',''],blue:['霧藍','#9fb2c2','#7f95a8'],milk:['奶茶','#d8c3a8','#b39878'],rose:['豆沙粉','#d9b5ad','#b78d85'],
   sage:['鼠尾草綠','#b6c3a9','#8c9c80'],lav:['薰衣草紫','#c2b7d2','#998cb0'],night:['夜空藍','#5f6d88','#3d4862']};
-function applyBack(){const k=(DB.settings||{}).back||'art';const b=BACKS[k]||BACKS.blue;
-  document.body.classList.toggle('art-back',k==='art');
-  const r=document.documentElement.style;if(b[1]){r.setProperty('--back1',b[1]);r.setProperty('--back2',b[2]);}
+const backKey=()=>{const k=(DB.settings||{}).back;return BACKS[k]?k:'auto';};
+function backImg(k){return k==='auto'?DECKS[curDeck()].back:k==='forestArt'?DECKS.forest.back:k==='rwsArt'?DECKS.rws.back:'';}
+function applyBack(){const k=backKey(),b=BACKS[k],bi=backImg(k);
+  document.body.classList.toggle('art-back',!!bi);
+  const r=document.documentElement.style;
+  if(bi)r.setProperty('--backimg',`url(${bi})`);
+  if(b[1]){r.setProperty('--back1',b[1]);r.setProperty('--back2',b[2]);}
   r.setProperty('--ar',DECKS[curDeck()].ratio);}
 function setDeck(k){if(!DECKS[k].ready)return;DB.settings={...(DB.settings||{}),deck:k};save();applyBack();renderSet();toast(`牌組換成「${DECKS[k].name}」`);}
 function setBack(k){DB.settings={...(DB.settings||{}),back:k};save();applyBack();renderSet();toast(`牌背換成「${BACKS[k][0]}」`);}
@@ -604,7 +609,8 @@ function renderSet(){
       <p style="font-size:12px;color:var(--sub);margin:8px 0 0">換牌組不會影響以前的紀錄，每天會顯示當天抽牌時用的牌組。</p>
     </div>
     <div class="box"><div class="lbl">🎴 牌背</div>
-      <div class="backs">${Object.entries(BACKS).map(([k,b])=>`<button class="bk${((DB.settings||{}).back||'art')===k?' on':''}" onclick="setBack('${k}')"><i style="background:${k==='art'?'url(cards/back.webp) center/cover':`linear-gradient(160deg,${b[1]},${b[2]})`}" class="${k==='art'?'art':''}"></i>${b[0]}</button>`).join('')}</div>
+      <div class="backs">${Object.entries(BACKS).map(([k,b])=>{const bi=backImg(k);return `<button class="bk${backKey()===k?' on':''}" onclick="setBack('${k}')"><i style="background:${bi?`url(${bi}) center/cover`:`linear-gradient(160deg,${b[1]},${b[2]})`}" class="${bi?'art':''}"></i>${b[0]}</button>`;}).join('')}</div>
+      <p style="font-size:12px;color:var(--sub);margin:8px 0 0">「跟著牌組」：偉特用經典牌背、森林小動物用狐狸兔子牌背，嘟嘟一家之後也會有專屬牌背。</p>
     </div>
     <input type="file" id="importFile" accept=".json,application/json" hidden onchange="importData(this)">
     <div class="box"><div class="lbl">關於資料</div>

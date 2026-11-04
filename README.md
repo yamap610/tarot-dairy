@@ -5,7 +5,7 @@
 ## 檔案說明
 - `index.html`：整個 App（牌意也寫在裡面）
 - `manifest.json`、`sw.js`、`icons/`：加入主畫面用的設定與圖示
-- `cards/back.webp`：牌背
+- `cards/<牌組>/back.webp`：各牌組專屬牌背
 - `cards/forest/`：森林小動物牌組（`thumb/` 是小圖）
 - `cards/rws/`：傳統偉特塔羅（Pamela Colman Smith, 1909，公有領域）
 - `cards/dudu/`：嘟嘟一家（準備中）
