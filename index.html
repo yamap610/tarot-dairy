@@ -207,6 +207,7 @@ textarea.in:focus{border-color:var(--milk)}
    ========================================================= */
 const BRAND = '依期一會｜塔羅日記';
 const TAGLINE = '以牌為鏡，與每個當下的自己相遇。';
+const IMG_FOOT = '以牌為鏡，與每個當下的自己相遇 ♡'; // 匯出圖片底部
 const MAJOR = [
  ['the-fool','The Fool','愚者','新開始・自由・信任','今天適合帶著好奇心出發，不用把每一步都想清楚，先跨出去就好。','衝動之前停一秒，確認重要的東西都帶在身上。'],
  ['the-magician','The Magician','魔術師','創造・行動力・資源','你手上已經有需要的工具了，今天是把想法變成行動的好日子。','別只停在計畫，也小心說得多、做得少。'],
@@ -335,7 +336,7 @@ function nextResetMs(){const n=new Date(),r=new Date(n);r.setHours(DAY_START,0,0
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const WD='日一二三四五六';
 function prettyDate(k){const [y,m,d]=k.split('-').map(Number);const dt=new Date(y,m-1,d);return `${y} 年 ${m} 月 ${d} 日（${WD[dt.getDay()]}）`;}
-const MOODS=['🥰','😊','😐','😔','😣'];
+const MOODS=['🥰','☺️','😶','😞','😭'];
 /* 牌背：auto = 跟著牌組（偉特用偉特牌背、森林用狐狸兔子、嘟嘟一家用專屬牌背） */
 const BACKS={auto:['跟著牌組','',''],rwsArt:['偉特玫瑰','',''],forestArt:['森林插畫','',''],duduArt:['嘟嘟星月','',''],blue:['霧藍','#9fb2c2','#7f95a8'],milk:['奶茶','#d8c3a8','#b39878'],rose:['豆沙粉','#d9b5ad','#b78d85'],
   sage:['鼠尾草綠','#b6c3a9','#8c9c80'],lav:['薰衣草紫','#c2b7d2','#998cb0'],night:['夜空藍','#5f6d88','#3d4862']};
@@ -574,11 +575,12 @@ function finishCanvas(cv,W,y){
 async function makeShareBlob(key){
   const rec=DB.days[key],c=CARDS[rec.card];
   const S=SERIF;
-  try{await Promise.all([document.fonts.load(`700 80px ${S}`,'今日指引'+prettyDate(key)+c.zh),document.fonts.load(`500 40px ${S}`,c.msg+c.care+c.kw+'依期一會｜'+TAGLINE)]);}catch(e){}
+  try{await Promise.all([document.fonts.load(`700 80px ${S}`,'今日指引'+prettyDate(key)+c.zh),document.fonts.load(`500 40px ${S}`,c.msg+c.care+c.kw+'依期一會'+IMG_FOOT)]);}catch(e){}
   const W=1080,H=1920,cv=document.createElement('canvas');cv.width=W;cv.height=H;
   const x=cv.getContext('2d');
   x.fillStyle='#f6f2ea';x.fillRect(0,0,W,H);
   x.textAlign='center';x.textBaseline='alphabetic';
+  x.fillStyle='#a8905e';x.font=`600 30px ${S}`;x.fillText('依期一會',W/2,112);
   x.fillStyle='#3c4a3e';x.font=`700 84px ${S}`;x.fillText('今日指引',W/2,200);
   x.fillStyle='#8a8478';x.font=`500 38px ${S}`;x.fillText(prettyDate(key),W/2,275);
   const dk=deckOf(rec),im=await loadImg(img(c,0,dk));
@@ -595,20 +597,19 @@ async function makeShareBlob(key){
   y+=74;for(const l of wrap(x,c.msg,860)){x.fillText(l,W/2,y);y+=66;}
   x.fillStyle='#8a8478';x.font=`500 34px ${S}`;
   y+=14;for(const l of wrap(x,'需要注意：'+c.care,860)){x.fillText(l,W/2,y);y+=54;}
-  y+=46;x.fillStyle='#b9ab92';x.font=`500 26px ${S}`;x.fillText(`依期一會｜${TAGLINE}`,W/2,y);
+  y+=46;x.fillStyle='#b9ab92';x.font=`500 26px ${S}`;x.fillText(IMG_FOOT,W/2,y);
   return finishCanvas(cv,W,Math.min(H,y+70));
 }
 async function makeMonthBlob(Y,M){
   const S=SERIF,W=1080,cv=document.createElement('canvas');cv.width=W;cv.height=2600;
   const x=cv.getContext('2d');
-  try{await document.fonts.load(`700 72px ${S}`,BRAND+TAGLINE+'年月抽牌天數寫日記平均吻合心情本月最常抽到日一二三四五六');}catch(e){}
+  try{await document.fonts.load(`700 72px ${S}`,BRAND+IMG_FOOT+'年月抽牌天數寫日記平均吻合心情本月最常抽到日一二三四五六');}catch(e){}
   x.fillStyle='#f6f2ea';x.fillRect(0,0,W,cv.height);x.textAlign='center';
-  x.fillStyle='#a8905e';x.font=`600 30px ${S}`;x.fillText(BRAND,W/2,115);
+  x.fillStyle='#a8905e';x.font=`600 30px ${S}`;x.fillText('依期一會',W/2,115);
   x.fillStyle='#3c4a3e';x.font=`700 76px ${S}`;x.fillText(`${Y} 年 ${M+1} 月`,W/2,205);
-  x.fillStyle='#8a8478';x.font=`500 30px ${S}`;x.fillText(TAGLINE,W/2,258);
   // 月曆
   const first=new Date(Y,M,1).getDay(),days=new Date(Y,M+1,0).getDate(),rows=Math.ceil((first+days)/7);
-  const gap=12,cw=(W-120-gap*6)/7,ch=cw*1.5,gx=60,gy=330;
+  const gap=12,cw=(W-120-gap*6)/7,ch=cw*1.5,gx=60,gy=300;
   x.font=`500 26px ${S}`;x.fillStyle='#8a8478';
   [...WD].forEach((w,i)=>x.fillText(w,gx+i*(cw+gap)+cw/2,gy-14));
   const keys=[];for(let d=1;d<=days;d++)keys.push(`${Y}-${pad(M+1)}-${pad(d)}`);
@@ -652,7 +653,8 @@ async function makeMonthBlob(Y,M){
     x.fillStyle='#8a8478';x.font=`500 26px ${S}`;x.fillText(tc.kw.split('・').join(' · '),236,y+164);
     y+=210;
   }
-  return finishCanvas(cv,W,y+70);
+  y+=62;x.textAlign='center';x.fillStyle='#b9ab92';x.font=`500 26px ${S}`;x.fillText(IMG_FOOT,W/2,y);
+  return finishCanvas(cv,W,y+66);
 }
 function shareText(key){const c=CARDS[DB.days[key].card];
   return `🃏 今日指引 ${key}\n${cardTitle(c)}｜${c.en}\n${c.msg}`;}
