@@ -170,6 +170,7 @@ textarea.in:focus{border-color:var(--milk)}
 .bk i.art::before,.bk i.art::after{display:none}
 .bk i::after{content:"✦";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fffdf8;font-style:normal;font-size:14px}
 .bk i::before{content:"";position:absolute;inset:3px;border:1px solid rgba(255,253,248,.7);border-radius:4px}
+.endnote{text-align:center;font-family:var(--serif);font-size:12px;color:var(--sub);opacity:.6;margin:26px 0 4px;letter-spacing:.05em}
 .countdown{text-align:center;font-size:13px;color:var(--sub);margin:14px 0 -8px}
 .countdown b{color:var(--gold);font-weight:600}
 .decktabs{display:flex;gap:6px;margin:12px 0 4px}
@@ -491,6 +492,7 @@ function renderToday(justDrawn){
   const [y,m,d]=curKey.split('-');const ly=`${+y-1}-${m}-${d}`;
   if(DB.days[ly]){const lc=CARDS[DB.days[ly].card];
     h+=`<div class="box lastyear" onclick="openDay('${ly}')"><img src="${img(lc,1,deckOf(DB.days[ly]))}" alt=""><div><div class="lbl">🕰️ 去年的今天</div>${cardTitle(lc)}</div></div>`;}
+  h+=`<p class="endnote">依期一會｜${TAGLINE}</p>`;
   el.innerHTML=h;
   const it=document.getElementById('intuition');
   it.onblur=()=>{const v=it.value.trim();if(v!==(rec.intuition||'')){rec.intuition=v;commitDay(curKey);}};
@@ -572,7 +574,7 @@ function finishCanvas(cv,W,y){
 async function makeShareBlob(key){
   const rec=DB.days[key],c=CARDS[rec.card];
   const S=SERIF;
-  try{await Promise.all([document.fonts.load(`700 80px ${S}`,'今日指引'+prettyDate(key)+c.zh),document.fonts.load(`500 40px ${S}`,c.msg+c.care+c.kw)]);}catch(e){}
+  try{await Promise.all([document.fonts.load(`700 80px ${S}`,'今日指引'+prettyDate(key)+c.zh),document.fonts.load(`500 40px ${S}`,c.msg+c.care+c.kw+'依期一會｜'+TAGLINE)]);}catch(e){}
   const W=1080,H=1920,cv=document.createElement('canvas');cv.width=W;cv.height=H;
   const x=cv.getContext('2d');
   x.fillStyle='#f6f2ea';x.fillRect(0,0,W,H);
@@ -593,7 +595,8 @@ async function makeShareBlob(key){
   y+=74;for(const l of wrap(x,c.msg,860)){x.fillText(l,W/2,y);y+=66;}
   x.fillStyle='#8a8478';x.font=`500 34px ${S}`;
   y+=14;for(const l of wrap(x,'需要注意：'+c.care,860)){x.fillText(l,W/2,y);y+=54;}
-  return finishCanvas(cv,W,Math.min(H,y+60));
+  y+=46;x.fillStyle='#b9ab92';x.font=`500 26px ${S}`;x.fillText(`依期一會｜${TAGLINE}`,W/2,y);
+  return finishCanvas(cv,W,Math.min(H,y+70));
 }
 async function makeMonthBlob(Y,M){
   const S=SERIF,W=1080,cv=document.createElement('canvas');cv.width=W;cv.height=2600;
