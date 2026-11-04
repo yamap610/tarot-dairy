@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>塔羅日記 · Daily Tarot</title>
+<title>依期一會｜塔羅日記</title>
 <meta name="theme-color" content="#f6f2ea">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="塔羅日記">
+<meta name="apple-mobile-web-app-title" content="依期一會">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
@@ -160,6 +160,12 @@ textarea.in:focus{border-color:var(--milk)}
 .bk i.art::before,.bk i.art::after{display:none}
 .bk i::after{content:"✦";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fffdf8;font-style:normal;font-size:14px}
 .bk i::before{content:"";position:absolute;inset:3px;border:1px solid rgba(255,253,248,.7);border-radius:4px}
+.countdown{text-align:center;font-size:13px;color:var(--sub);margin:14px 0 -8px}
+.countdown b{color:var(--gold);font-weight:600}
+.decktabs{display:flex;gap:6px;margin:12px 0 4px}
+.decktabs button{flex:1;padding:8px 4px;border-radius:12px;background:var(--paper);border:1px solid var(--line);font-size:13px;color:var(--sub);line-height:1.4}
+.decktabs button small{display:block;font-size:11px;opacity:.8}
+.decktabs button.on{background:var(--ink);color:#fffdf8;border-color:var(--ink)}
 .datelist{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .datelist button{font-size:12px;padding:3px 10px;border-radius:20px;background:var(--paper);border:1px solid var(--line)}
 </style>
@@ -188,7 +194,8 @@ textarea.in:focus{border-color:var(--milk)}
    1. 牌卡資料（78 張）
    每張：關鍵字 kw、今日指引 msg、需要注意 care
    ========================================================= */
-const BRAND = '塔羅日記';
+const BRAND = '依期一會｜塔羅日記';
+const TAGLINE = '以牌為鏡，與每個當下的自己相遇。';
 const MAJOR = [
  ['the-fool','The Fool','愚者','新開始・自由・信任','今天適合帶著好奇心出發，不用把每一步都想清楚，先跨出去就好。','衝動之前停一秒，確認重要的東西都帶在身上。'],
  ['the-magician','The Magician','魔術師','創造・行動力・資源','你手上已經有需要的工具了，今天是把想法變成行動的好日子。','別只停在計畫，也小心說得多、做得少。'],
@@ -295,7 +302,7 @@ SUITS.forEach(s=>s.data.forEach((d,j)=>{
 const DECKS={
   rws:{name:'傳統偉特塔羅',dir:'rws',ratio:286/513,ready:true,back:'cards/rws/back.webp'},
   forest:{name:'森林小動物',dir:'forest',ratio:2/3,ready:true,back:'cards/forest/back.webp'},
-  dudu:{name:'嘟嘟一家',dir:'dudu',ratio:2/3,ready:false,back:'cards/dudu/back.webp'},
+  dudu:{name:'嘟嘟一家',dir:'dudu',ratio:2/3,ready:true,back:'cards/dudu/back.webp'},
 };
 const curDeck=()=>{const d=(DB.settings||{}).deck;return DECKS[d]&&DECKS[d].ready?d:'forest';};
 const deckOf=rec=>(rec&&DECKS[rec.deck]&&DECKS[rec.deck].ready)?rec.deck:'forest';
@@ -310,50 +317,153 @@ const KEY='leimeng-tarot-v1';
 let DB={days:{}};
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.days)DB=d;}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(DB));return true;}catch(e){toast('⚠️ 儲存失敗，請確認瀏覽器沒有開無痕模式');return false;}}
+const DAY_START=5; // 每天清晨 5 點換日
 const keyOf=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-const todayKey=()=>keyOf(new Date());
+const todayKey=()=>keyOf(new Date(Date.now()-DAY_START*36e5));
+function nextResetMs(){const n=new Date(),r=new Date(n);r.setHours(DAY_START,0,0,0);if(r<=n)r.setDate(r.getDate()+1);return r-n;}
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const WD='日一二三四五六';
 function prettyDate(k){const [y,m,d]=k.split('-').map(Number);const dt=new Date(y,m-1,d);return `${y} 年 ${m} 月 ${d} 日（${WD[dt.getDay()]}）`;}
 const MOODS=['🥰','😊','😐','😔','😣'];
 /* 牌背：auto = 跟著牌組（偉特用偉特牌背、森林用狐狸兔子、嘟嘟一家用專屬牌背） */
-const BACKS={auto:['跟著牌組','',''],forestArt:['森林插畫','',''],rwsArt:['經典偉特','',''],blue:['霧藍','#9fb2c2','#7f95a8'],milk:['奶茶','#d8c3a8','#b39878'],rose:['豆沙粉','#d9b5ad','#b78d85'],
+const BACKS={auto:['跟著牌組','',''],rwsArt:['偉特玫瑰','',''],forestArt:['森林插畫','',''],duduArt:['嘟嘟星月','',''],blue:['霧藍','#9fb2c2','#7f95a8'],milk:['奶茶','#d8c3a8','#b39878'],rose:['豆沙粉','#d9b5ad','#b78d85'],
   sage:['鼠尾草綠','#b6c3a9','#8c9c80'],lav:['薰衣草紫','#c2b7d2','#998cb0'],night:['夜空藍','#5f6d88','#3d4862']};
 const backKey=()=>{const k=(DB.settings||{}).back;return BACKS[k]?k:'auto';};
-function backImg(k){return k==='auto'?DECKS[curDeck()].back:k==='forestArt'?DECKS.forest.back:k==='rwsArt'?DECKS.rws.back:'';}
+function backImg(k){return k==='auto'?DECKS[curDeck()].back:({forestArt:DECKS.forest.back,rwsArt:DECKS.rws.back,duduArt:DECKS.dudu.back})[k]||'';}
 function applyBack(){const k=backKey(),b=BACKS[k],bi=backImg(k);
   document.body.classList.toggle('art-back',!!bi);
   const r=document.documentElement.style;
   if(bi)r.setProperty('--backimg',`url(${bi})`);
   if(b[1]){r.setProperty('--back1',b[1]);r.setProperty('--back2',b[2]);}
   r.setProperty('--ar',DECKS[curDeck()].ratio);}
-function setDeck(k){if(!DECKS[k].ready)return;DB.settings={...(DB.settings||{}),deck:k};save();applyBack();renderSet();toast(`牌組換成「${DECKS[k].name}」`);}
-function setBack(k){DB.settings={...(DB.settings||{}),back:k};save();applyBack();renderSet();toast(`牌背換成「${BACKS[k][0]}」`);}
+function setDeck(k){if(!DECKS[k].ready)return;commitSettings({deck:k});applyBack();renderSet();toast(`牌組換成「${DECKS[k].name}」`);}
+function setBack(k){commitSettings({back:k});applyBack();renderSet();toast(`牌背換成「${BACKS[k][0]}」`);}
 const FITS=['','完全不像','有一點點','普通','蠻準的','超準！'];
 
 function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2200);}
 
 /* =========================================================
-   3. 今日頁
+   3. 雲端同步（Firebase：Google 登入 + Firestore）
+   資料先存在手機，再同步到雲端；用「更新時間 u」決定哪邊比較新
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyB621Kiy2HG1gw-Y1mSjxxJ7nai4V5hWhU",
+  authDomain: "tarot-dairy.firebaseapp.com",
+  projectId: "tarot-dairy",
+  storageBucket: "tarot-dairy.firebasestorage.app",
+  messagingSenderId: "776285873962",
+  appId: "1:776285873962:web:07f1b3a78c6e10379ca053"
+};
+const FB='https://www.gstatic.com/firebasejs/10.12.2/';
+const cloud={ready:false,user:null,status:'loading',A:null,F:null,auth:null,db:null,unsub:null};
+const clean=o=>JSON.parse(JSON.stringify(o));
+const userDoc=(...p)=>cloud.F.doc(cloud.db,'users',cloud.user.uid,...p);
+const userDays=()=>cloud.F.collection(cloud.db,'users',cloud.user.uid,'days');
+
+async function initCloud(){
+  try{
+    const [appM,authM,fsM]=await Promise.all([import(FB+'firebase-app.js'),import(FB+'firebase-auth.js'),import(FB+'firebase-firestore.js')]);
+    const app=appM.initializeApp(firebaseConfig);
+    cloud.A=authM;cloud.F=fsM;cloud.auth=authM.getAuth(app);cloud.db=fsM.getFirestore(app);cloud.ready=true;cloud.status='';
+    authM.getRedirectResult(cloud.auth).catch(e=>console.warn('redirect',e));
+    authM.onAuthStateChanged(cloud.auth,u=>{
+      cloud.user=u;
+      if(u)startSync();else{if(cloud.unsub){cloud.unsub();cloud.unsub=null;}cloud.status='';refreshCloudUI();}
+    });
+  }catch(e){console.warn('cloud init',e);cloud.status='offline';refreshCloudUI();}
+}
+async function cloudLogin(){
+  if(!cloud.ready){toast('雲端還沒連上，請確認有網路');return;}
+  const A=cloud.A,p=new A.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});
+  try{await A.signInWithPopup(cloud.auth,p);}
+  catch(e){
+    if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment','auth/web-storage-unsupported'].includes(e.code)){
+      try{await A.signInWithRedirect(cloud.auth,p);}catch(e2){toast('⚠️ 登入失敗：'+(e2.code||e2.message));}
+    }else if(e.code!=='auth/popup-closed-by-user'&&e.code!=='auth/cancelled-popup-request')toast('⚠️ 登入失敗：'+(e.code||e.message));
+  }
+}
+async function cloudLogout(){if(cloud.ready)await cloud.A.signOut(cloud.auth);toast('已登出，資料仍保留在這支手機');}
+
+async function startSync(){
+  const F=cloud.F;cloud.status='syncing';refreshCloudUI();
+  try{
+    // 設定
+    const ss=await F.getDoc(userDoc('meta','settings'));
+    const cs=ss.exists()?ss.data():null,ls=DB.settings||{};
+    if(cs&&(cs.u||0)>(ls.u||0))DB.settings=cs;
+    else if(Object.keys(ls).length)await F.setDoc(userDoc('meta','settings'),clean({...ls,u:ls.u||Date.now()}));
+    // 每天的紀錄：雙向合併，較新的贏
+    const snap=await F.getDocs(userDays());
+    const remote={};snap.forEach(d=>remote[d.id]=d.data());
+    for(const k in remote){const l=DB.days[k];if(!l||(remote[k].u||0)>(l.u||0))DB.days[k]=remote[k];}
+    const ups=[];
+    for(const k in DB.days){const l=DB.days[k],r=remote[k];
+      if(!l.u)l.u=l.savedAt||l.drawnAt||Date.now();
+      if(!r||l.u>(r.u||0))ups.push(F.setDoc(userDoc('days',k),clean(l)));}
+    await Promise.all(ups);
+    save();
+    // 之後其他裝置改了，這裡會即時更新
+    if(cloud.unsub)cloud.unsub();
+    cloud.unsub=F.onSnapshot(userDays(),s=>{
+      let ch=false;
+      s.docChanges().forEach(c=>{const k=c.doc.id;
+        if(c.type==='removed'){if(DB.days[k]){delete DB.days[k];ch=true;}return;}
+        const r=c.doc.data(),l=DB.days[k];if(!l||(r.u||0)>(l.u||0)){DB.days[k]=r;ch=true;}});
+      if(ch){save();rerenderSoft();}
+    },e=>{console.warn(e);cloud.status='error';refreshCloudUI();});
+    cloud.status='ok';applyBack();
+  }catch(e){console.warn('sync',e);cloud.status='error';}
+  refreshCloudUI();
+}
+function cloudPutDay(key){
+  if(!cloud.user)return;const F=cloud.F,r=DB.days[key];
+  const p=r?F.setDoc(userDoc('days',key),clean(r)):F.deleteDoc(userDoc('days',key));
+  p.then(()=>{if(cloud.status==='error'){cloud.status='ok';refreshCloudUI();}}).catch(e=>{console.warn(e);cloud.status='error';refreshCloudUI();});
+}
+function cloudPutSettings(){if(!cloud.user)return;cloud.F.setDoc(userDoc('meta','settings'),clean(DB.settings||{})).catch(e=>console.warn(e));}
+function commitDay(key){const r=DB.days[key];if(r)r.u=Date.now();const ok=save();cloudPutDay(key);return ok;}
+function commitSettings(patch){DB.settings={...(DB.settings||{}),...patch,u:Date.now()};save();cloudPutSettings();}
+function rerenderSoft(){const a=document.activeElement;if(a&&a.tagName==='TEXTAREA')return;const b=document.querySelector('.nav button.on');RENDER[b.dataset.tab]();}
+function refreshCloudUI(){const b=document.querySelector('.nav button.on').dataset.tab;if(b==='set'||b==='today')rerenderSoft();}
+function cloudLine(){
+  if(cloud.user){
+    const st={syncing:'🔄 同步中…',ok:'✅ 已同步',error:'⚠️ 同步失敗，有網路時會再試'}[cloud.status]||'';
+    return `<div class="row"><div>☁️ 雲端同步<small>${esc(cloud.user.email||'')}<br>${st}</small></div><button class="btn small ghost" onclick="cloudLogout()">登出</button></div>`;
+  }
+  if(cloud.status==='loading')return `<div class="row"><div>☁️ 雲端同步<small>連線中…</small></div></div>`;
+  if(cloud.status==='offline')return `<div class="row"><div>☁️ 雲端同步<small>目前連不上雲端（沒有網路？）</small></div><button class="btn small ghost" onclick="location.reload()">重試</button></div>`;
+  return `<div class="row"><div>☁️ 雲端同步<small>用 Google 登入後，手機、電腦都能看到同一份日記</small></div><button class="btn small" onclick="cloudLogin()">登入</button></div>`;
+}
+
+/* =========================================================
+   4. 今日頁
    ========================================================= */
 let curKey=todayKey();
+function countdownText(){const ms=nextResetMs(),h=Math.floor(ms/36e5),m=Math.ceil((ms%36e5)/6e4);
+  return h?`${h} 小時 ${m===60?59:m} 分`:`${m} 分鐘`;}
+function topBanner(){
+  if(cloud.ready&&!cloud.user)return `<div class="banner">☁️<span>登入 Google 帳號，日記換手機也不怕不見</span><button class="btn small" onclick="cloudLogin()">登入</button></div>`;
+  if(!cloud.user)return backupBanner();
+  return '';
+}
 function renderToday(justDrawn){
   const el=document.getElementById('tab-today');
   const rec=DB.days[curKey];
-  let h=backupBanner()+`<div class="h1">今日指引</div>
+  let h=topBanner()+`<div class="h1">今日指引</div>
     <div class="meta">${prettyDate(curKey)}</div>`;
   if(!rec){
     h+=`<div class="stage idle" id="stage"><div class="flipper" id="flipper">
           <div class="face back"><span class="sym">✦</span></div>
           <div class="face front"><img id="frontImg" alt=""></div>
         </div></div>
-        <p class="hint" id="hint">深呼吸，想著今天的自己<br>準備好了就點一下牌</p>`;
+        <p class="hint" id="hint">${TAGLINE}<br>準備好了，就點一下牌</p>`;
     el.innerHTML=h;
     document.getElementById('stage').onclick=drawCard;
     return;
   }
   const c=CARDS[rec.card],dk=deckOf(rec);
-  h+=`<img class="card-img" src="${img(c,0,dk)}" alt="${c.en}" onclick="zoom('${img(c,0,dk)}')" style="${arStyle(dk)}${justDrawn?';animation:fade .6s ease':''}">
+  h+=`<div class="countdown">🌙 距離下次抽牌還有 <b id="cd">${countdownText()}</b></div>
+    <img class="card-img" src="${img(c,0,dk)}" alt="${c.en}" onclick="zoom('${img(c,0,dk)}')" style="${arStyle(dk)}${justDrawn?';animation:fade .6s ease':''}">
     <p class="cname">${cardTitle(c)}</p>
     <div class="cen">${c.en.toUpperCase()}</div>
     <div class="chips">${c.kw.split('・').map(k=>`<span class="chip">${k}</span>`).join('')}</div>
@@ -368,17 +478,15 @@ function renderToday(justDrawn){
       <textarea class="in" id="intuition" placeholder="例如：今天好像要放慢一點…" rows="2">${esc(rec.intuition)}</textarea>
     </div>
     <div class="box" id="diaryBox"></div>`;
-  // 去年的今天
   const [y,m,d]=curKey.split('-');const ly=`${+y-1}-${m}-${d}`;
   if(DB.days[ly]){const lc=CARDS[DB.days[ly].card];
     h+=`<div class="box lastyear" onclick="openDay('${ly}')"><img src="${img(lc,1,deckOf(DB.days[ly]))}" alt=""><div><div class="lbl">🕰️ 去年的今天</div>${cardTitle(lc)}</div></div>`;}
   el.innerHTML=h;
   const it=document.getElementById('intuition');
-  it.onblur=()=>{rec.intuition=it.value.trim();save();};
+  it.onblur=()=>{const v=it.value.trim();if(v!==(rec.intuition||'')){rec.intuition=v;commitDay(curKey);}};
   renderDiaryForm(document.getElementById('diaryBox'),curKey,'🌙 今晚的日記');
 }
-
-/* 超過 30 天沒備份就提醒 */
+/* 沒登入雲端時：超過 30 天沒備份就提醒 */
 function backupBanner(){
   const keys=Object.keys(DB.days).sort();if(!keys.length)return '';
   const last=(DB.settings||{}).lastExport;
@@ -391,18 +499,17 @@ function drawCard(){
   const stage=document.getElementById('stage');
   if(stage.dataset.busy)return; stage.dataset.busy=1;
   const r=new Uint32Array(1);crypto.getRandomValues(r);
-  const idx=r[0]%78;
+  const idx=r[0]%78,key=curKey;
   const fi=document.getElementById('frontImg');
   const go=()=>{
     stage.classList.remove('idle');
     document.getElementById('flipper').classList.add('flipped');
     document.getElementById('hint').textContent='✨';
-    DB.days[curKey]={card:idx,deck:curDeck(),drawnAt:Date.now()};save();
+    DB.days[key]={card:idx,deck:curDeck(),drawnAt:Date.now()};commitDay(key);
     setTimeout(()=>renderToday(true),1500);
   };
   fi.onload=go;fi.onerror=go;fi.src=img(CARDS[idx],0,curDeck());
 }
-
 /* 日記表單（今日頁和月曆彈窗共用） */
 function renderDiaryForm(box,key,title){
   const rec=DB.days[key];
@@ -423,14 +530,15 @@ function renderDiaryForm(box,key,title){
     box.querySelector('.fitlbl').textContent=FITS[st.fit];});
   box.querySelector('[data-save]').onclick=()=>{
     rec.mood=st.mood;rec.fit=st.fit;rec.diary=box.querySelector('textarea').value.trim();rec.savedAt=Date.now();
-    if(save()){toast('🌙 日記已儲存');box.querySelector('.saved').textContent='上次儲存：'+new Date(rec.savedAt).toLocaleString('zh-TW',{hour12:false});}
+    if(commitDay(key)){toast(cloud.user?'🌙 日記已儲存，並同步到雲端':'🌙 日記已儲存');box.querySelector('.saved').textContent='上次儲存：'+new Date(rec.savedAt).toLocaleString('zh-TW',{hour12:false});}
     if(document.getElementById('tab-cal').classList.contains('active'))renderCal();
   };
 }
-
 /* =========================================================
-   4. 分享圖（canvas 畫出「今日指引」卡片）
+   5. 分享圖（今日指引卡片）＋ 月回顧圖片
    ========================================================= */
+const SERIF='"Noto Serif TC","Songti TC",serif';
+const EMOJI='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 function loadImg(src){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=src;});}
 function wrap(ctx,text,maxW){
   const lines=[];let line='';
@@ -441,9 +549,19 @@ function wrap(ctx,text,maxW){
   }
   if(line)lines.push(line);return lines;
 }
+function drawCover(x,im,dx,dy,dw,dh){ // 像 CSS object-fit: cover
+  const s=Math.max(dw/im.width,dh/im.height),sw=dw/s,sh=dh/s;
+  x.drawImage(im,(im.width-sw)/2,(im.height-sh)/2,sw,sh,dx,dy,dw,dh);
+}
+function finishCanvas(cv,W,y){
+  const FH=Math.round(y),out=document.createElement('canvas');out.width=W;out.height=FH;
+  const o=out.getContext('2d');o.drawImage(cv,0,0);
+  o.strokeStyle='#e3d9c8';o.lineWidth=3;o.strokeRect(36,36,W-72,FH-72);
+  return new Promise((ok,no)=>out.toBlob(b=>b?ok(b):no(new Error('blob')),'image/png'));
+}
 async function makeShareBlob(key){
   const rec=DB.days[key],c=CARDS[rec.card];
-  const S='"Noto Serif TC","Songti TC",serif';
+  const S=SERIF;
   try{await Promise.all([document.fonts.load(`700 80px ${S}`,'今日指引'+prettyDate(key)+c.zh),document.fonts.load(`500 40px ${S}`,c.msg+c.care+c.kw)]);}catch(e){}
   const W=1080,H=1920,cv=document.createElement('canvas');cv.width=W;cv.height=H;
   const x=cv.getContext('2d');
@@ -451,67 +569,111 @@ async function makeShareBlob(key){
   x.textAlign='center';x.textBaseline='alphabetic';
   x.fillStyle='#3c4a3e';x.font=`700 84px ${S}`;x.fillText('今日指引',W/2,200);
   x.fillStyle='#8a8478';x.font=`500 38px ${S}`;x.fillText(prettyDate(key),W/2,275);
-  // 牌面
   const dk=deckOf(rec),im=await loadImg(img(c,0,dk));
   const ch=840,cw=Math.round(ch*DECKS[dk].ratio),cx=(W-cw)/2,cy=360,r=26;
   x.save();x.shadowColor='rgba(80,70,50,.25)';x.shadowBlur=40;x.shadowOffsetY=16;
   x.fillStyle='#fff';x.beginPath();x.roundRect(cx,cy,cw,ch,r);x.fill();x.restore();
-  x.save();x.beginPath();x.roundRect(cx,cy,cw,ch,r);x.clip();x.drawImage(im,cx,cy,cw,ch);x.restore();
-  // 牌名
+  x.save();x.beginPath();x.roundRect(cx,cy,cw,ch,r);x.clip();drawCover(x,im,cx,cy,cw,ch);x.restore();
   let y=cy+ch+90;
   x.fillStyle='#3c4a3e';x.font=`700 54px ${S}`;x.fillText(cardTitle(c),W/2,y);
   y+=56;x.fillStyle='#8a8478';x.font=`500 30px ${S}`;x.fillText(c.en.toUpperCase().split('').join(' '),W/2,y);
   y+=58;x.fillStyle='#a8905e';x.font=`500 34px ${S}`;x.fillText(c.kw.split('・').join('  ·  '),W/2,y);
   y+=40;x.strokeStyle='#d9ccb6';x.lineWidth=2;x.beginPath();x.moveTo(W/2-120,y);x.lineTo(W/2+120,y);x.stroke();
-  // 今日指引
   x.fillStyle='#3c4a3e';x.font=`500 42px ${S}`;
   y+=74;for(const l of wrap(x,c.msg,860)){x.fillText(l,W/2,y);y+=66;}
   x.fillStyle='#8a8478';x.font=`500 34px ${S}`;
   y+=14;for(const l of wrap(x,'需要注意：'+c.care,860)){x.fillText(l,W/2,y);y+=54;}
-  // 依內容高度裁切，底部不留大片空白
-  const FH=Math.min(H,Math.round(y+60)),out=document.createElement('canvas');out.width=W;out.height=FH;
-  const o=out.getContext('2d');o.drawImage(cv,0,0);
-  o.strokeStyle='#e3d9c8';o.lineWidth=3;o.strokeRect(36,36,W-72,FH-72);
-  return await new Promise((ok,no)=>out.toBlob(b=>b?ok(b):no(new Error('blob')),'image/png'));
+  return finishCanvas(cv,W,Math.min(H,y+60));
+}
+async function makeMonthBlob(Y,M){
+  const S=SERIF,W=1080,cv=document.createElement('canvas');cv.width=W;cv.height=2600;
+  const x=cv.getContext('2d');
+  try{await document.fonts.load(`700 72px ${S}`,BRAND+TAGLINE+'年月抽牌天數寫日記平均吻合心情本月最常抽到日一二三四五六');}catch(e){}
+  x.fillStyle='#f6f2ea';x.fillRect(0,0,W,cv.height);x.textAlign='center';
+  x.fillStyle='#a8905e';x.font=`600 30px ${S}`;x.fillText(BRAND,W/2,115);
+  x.fillStyle='#3c4a3e';x.font=`700 76px ${S}`;x.fillText(`${Y} 年 ${M+1} 月`,W/2,205);
+  x.fillStyle='#8a8478';x.font=`500 30px ${S}`;x.fillText(TAGLINE,W/2,258);
+  // 月曆
+  const first=new Date(Y,M,1).getDay(),days=new Date(Y,M+1,0).getDate(),rows=Math.ceil((first+days)/7);
+  const gap=12,cw=(W-120-gap*6)/7,ch=cw*1.5,gx=60,gy=330;
+  x.font=`500 26px ${S}`;x.fillStyle='#8a8478';
+  [...WD].forEach((w,i)=>x.fillText(w,gx+i*(cw+gap)+cw/2,gy-14));
+  const keys=[];for(let d=1;d<=days;d++)keys.push(`${Y}-${pad(M+1)}-${pad(d)}`);
+  const imgs={};await Promise.all(keys.filter(k=>DB.days[k]).map(async k=>{const r=DB.days[k];try{imgs[k]=await loadImg(img(CARDS[r.card],1,deckOf(r)));}catch(e){}}));
+  let drawn=0,wrote=0,fs=0,fn=0;const cardCnt={},moodCnt={};
+  keys.forEach((k,i)=>{
+    const p=first+i,cx=gx+(p%7)*(cw+gap),cy=gy+Math.floor(p/7)*(ch+gap),r=DB.days[k];
+    x.save();x.beginPath();x.roundRect(cx,cy,cw,ch,12);x.fillStyle='#fffdf8';x.fill();x.strokeStyle='#e8e0d2';x.lineWidth=2;x.stroke();x.clip();
+    if(r&&imgs[k])drawCover(x,imgs[k],cx,cy,cw,ch);
+    x.restore();
+    // 日期
+    x.textAlign='left';x.font=`600 22px ${S}`;
+    if(r){x.fillStyle='rgba(255,253,248,.92)';x.beginPath();x.roundRect(cx+5,cy+5,i>=9?40:30,28,8);x.fill();}
+    x.fillStyle=r?'#3c4a3e':'#b4ab9c';x.fillText(String(i+1),cx+11,cy+27);
+    if(r){
+      drawn++;if(r.diary)wrote++;if(r.fit){fs+=r.fit;fn++;}
+      const ck=deckOf(r)+':'+r.card;cardCnt[ck]=(cardCnt[ck]||0)+1;
+      if(r.mood!=null){moodCnt[r.mood]=(moodCnt[r.mood]||0)+1;
+        x.fillStyle='rgba(255,253,248,.92)';x.beginPath();x.arc(cx+cw-22,cy+ch-22,19,0,7);x.fill();
+        x.textAlign='center';x.font=`26px ${EMOJI}`;x.fillText(MOODS[r.mood],cx+cw-22,cy+ch-12);}
+    }
+  });
+  let y=gy+rows*(ch+gap)+24;
+  // 統計
+  const topMood=Object.keys(moodCnt).sort((a,b)=>moodCnt[b]-moodCnt[a])[0];
+  const stats=[[String(drawn),'抽牌天數'],[String(wrote),'寫日記天數'],[fn?(fs/fn).toFixed(1)+' ★':'–','平均吻合'],[topMood!=null?MOODS[topMood]:'–','最多的心情']];
+  const sw=(W-120-16*3)/4;
+  stats.forEach(([v,l],i)=>{const sx=60+i*(sw+16);
+    x.fillStyle='#fffdf8';x.strokeStyle='#e8e0d2';x.lineWidth=2;x.beginPath();x.roundRect(sx,y,sw,130,18);x.fill();x.stroke();
+    x.textAlign='center';x.fillStyle='#3c4a3e';x.font=i===3?`46px ${EMOJI}`:`700 44px ${S}`;x.fillText(v,sx+sw/2,y+66);
+    x.fillStyle='#8a8478';x.font=`500 24px ${S}`;x.fillText(l,sx+sw/2,y+106);});
+  y+=130+20;
+  // 最常抽到
+  const top=Object.keys(cardCnt).sort((a,b)=>cardCnt[b]-cardCnt[a])[0];
+  if(top){
+    const [tdk,tid]=top.split(':'),tc=CARDS[+tid];
+    x.fillStyle='#fffdf8';x.strokeStyle='#e8e0d2';x.beginPath();x.roundRect(60,y,W-120,210,18);x.fill();x.stroke();
+    try{const ti=await loadImg(img(tc,1,tdk));x.save();x.beginPath();x.roundRect(90,y+20,113,170,10);x.clip();drawCover(x,ti,90,y+20,113,170);x.restore();}catch(e){}
+    x.textAlign='left';x.fillStyle='#a8905e';x.font=`600 26px ${S}`;x.fillText('本月最常抽到',236,y+64);
+    x.fillStyle='#3c4a3e';x.font=`700 46px ${S}`;x.fillText(`${cardTitle(tc)}  ×${cardCnt[top]}`,236,y+122);
+    x.fillStyle='#8a8478';x.font=`500 26px ${S}`;x.fillText(tc.kw.split('・').join(' · '),236,y+164);
+    y+=210;
+  }
+  return finishCanvas(cv,W,y+70);
 }
 function shareText(key){const c=CARDS[DB.days[key].card];
   return `🃏 今日指引 ${key}\n${cardTitle(c)}｜${c.en}\n${c.msg}`;}
-
-async function shareCard(key,btn){
-  const old=btn.innerHTML;btn.disabled=true;btn.innerHTML='製作中…';
-  let blob;
-  try{blob=await makeShareBlob(key);}
-  catch(e){btn.disabled=false;btn.innerHTML=old;toast('⚠️ 分享圖做不出來，請用 GitHub Pages 網址開啟');return;}
-  btn.disabled=false;btn.innerHTML=old;
-  const file=new File([blob],`tarot-${key}.png`,{type:'image/png'});
+async function shareBlob(blob,name,text,title){
+  const file=new File([blob],name,{type:'image/png'});
   if(navigator.canShare && navigator.canShare({files:[file]})){
-    try{await navigator.share({files:[file],title:'今日指引',text:shareText(key)});return;}
+    try{await navigator.share({files:[file],title,text});return;}
     catch(e){if(e.name==='AbortError')return;}
   }
-  showSharePreview(blob,key);
+  showSharePreview(blob,name,text);
 }
-async function saveImage(key,btn){
-  const old=btn.innerHTML;btn.disabled=true;btn.innerHTML='製作中…';
-  try{const blob=await makeShareBlob(key);showSharePreview(blob,key);}
-  catch(e){toast('⚠️ 圖片做不出來，請用 GitHub Pages 網址開啟');}
-  btn.disabled=false;btn.innerHTML=old;
-}
-function showSharePreview(blob,key){
+async function withBusy(btn,fn){const old=btn.innerHTML;btn.disabled=true;btn.innerHTML='製作中…';
+  try{await fn();}catch(e){console.warn(e);toast('⚠️ 圖片做不出來，請用 GitHub Pages 網址開啟');}
+  btn.disabled=false;btn.innerHTML=old;}
+function shareCard(key,btn){withBusy(btn,async()=>{const b=await makeShareBlob(key);await shareBlob(b,`tarot-${key}.png`,shareText(key),'今日指引');});}
+function saveImage(key,btn){withBusy(btn,async()=>showSharePreview(await makeShareBlob(key),`tarot-${key}.png`,shareText(key)));}
+function monthImage(btn){withBusy(btn,async()=>{const b=await makeMonthBlob(calY,calM);
+  await shareBlob(b,`tarot-${calY}-${pad(calM+1)}.png`,`📅 ${BRAND}・${calY} 年 ${calM+1} 月回顧`,'月回顧');});}
+function showSharePreview(blob,name,text){
   const url=URL.createObjectURL(blob);
   openSheet(`<button class="close" onclick="closeSheet()">✕</button>
-    <div class="h2">分享圖</div>
+    <div class="h2">圖片預覽</div>
     <img class="share-preview" src="${url}" alt="分享圖">
     <p class="hint">📱 手機：長按圖片 →「儲存影像」或直接分享</p>
     <div class="btns">
-      <a class="btn ghost" href="${url}" download="tarot-${key}.png" style="text-decoration:none">⬇️ 下載圖片</a>
-      <a class="btn line" href="https://line.me/R/share?text=${encodeURIComponent(shareText(key))}" target="_blank" style="text-decoration:none">💬 LINE 傳文字</a>
+      <a class="btn ghost" href="${url}" download="${name}" style="text-decoration:none">⬇️ 下載圖片</a>
+      <a class="btn line" href="https://line.me/R/share?text=${encodeURIComponent(text)}" target="_blank" style="text-decoration:none">💬 LINE 傳文字</a>
     </div>`);
 }
 
 /* =========================================================
-   5. 月曆日記
+   6. 月曆日記
    ========================================================= */
-let calY=new Date().getFullYear(),calM=new Date().getMonth();
+let calY=+todayKey().slice(0,4),calM=+todayKey().slice(5,7)-1;
 function renderCal(){
   const el=document.getElementById('tab-cal');
   const first=new Date(calY,calM,1),days=new Date(calY,calM+1,0).getDate();
@@ -531,14 +693,14 @@ function renderCal(){
       <div class="stat"><b>${wrote}</b><span>寫日記天數</span></div>
       <div class="stat"><b>${fitN?(fitSum/fitN).toFixed(1):'–'}</b><span>平均吻合 ★</span></div>
     </div>
+    ${drawn?`<div class="btns"><button class="btn" onclick="monthImage(this)">📷 本月回顧圖片</button></div>`:''}
     <p class="hint" style="margin-top:14px">點有牌的日子，可以查看或補寫日記</p>`;
 }
 function calMove(n){calM+=n;if(calM<0){calM=11;calY--;}if(calM>11){calM=0;calY++;}renderCal();}
-
 function openDay(k){
   const rec=DB.days[k];if(!rec)return;const c=CARDS[rec.card],dk=deckOf(rec);
   openSheet(`<button class="close" onclick="closeSheet()">✕</button>
-    <div class="eyebrow">${prettyDate(k)}</div>
+    <div class="eyebrow">${prettyDate(k)}・${DECKS[dk].name}</div>
     <img class="card-img" src="${img(c,0,dk)}" style="${arStyle(dk)}" alt="" onclick="zoom('${img(c,0,dk)}')">
     <p class="cname">${cardTitle(c)}</p><div class="cen">${c.en.toUpperCase()}</div>
     <div class="chips">${c.kw.split('・').map(x=>`<span class="chip">${x}</span>`).join('')}</div>
@@ -551,58 +713,64 @@ function openDay(k){
 }
 
 /* =========================================================
-   6. 圖鑑 + 統計
+   7. 圖鑑（三套牌分開收集）
    ========================================================= */
-let deckFilter='all';
+let deckFilter='all',viewDeck=null;
+function deckStats(dk){
+  const cnt=Array(78).fill(0),suitCnt={major:0,wands:0,cups:0,swords:0,pentacles:0};let total=0;
+  Object.values(DB.days).forEach(r=>{if(deckOf(r)!==dk)return;cnt[r.card]++;total++;suitCnt[CARDS[r.card].suit]++;});
+  return {cnt,suitCnt,total,got:cnt.filter(n=>n).length};
+}
 function renderDeck(){
   const el=document.getElementById('tab-deck');
-  const cnt=Array(78).fill(0),fit=Array(78).fill(0),fitN=Array(78).fill(0);
-  const suitCnt={major:0,wands:0,cups:0,swords:0,pentacles:0};let total=0;
-  Object.values(DB.days).forEach(r=>{cnt[r.card]++;total++;suitCnt[CARDS[r.card].suit]++;if(r.fit){fit[r.card]+=r.fit;fitN[r.card]++;}});
-  const got=cnt.filter(n=>n).length;
+  const vd=viewDeck&&DECKS[viewDeck]&&DECKS[viewDeck].ready?viewDeck:curDeck();
+  const {cnt,suitCnt,total,got}=deckStats(vd);
   let top=-1;cnt.forEach((n,i)=>{if(n&&(top<0||n>cnt[top]))top=i;});
   const suitRows=[['major','✨ 大阿爾克那'],...SUITS.map(s=>[s.key,`${s.emoji} ${s.zh}`])];
   const max=Math.max(1,...Object.values(suitCnt));
   const list=CARDS.filter(c=>deckFilter==='all'||c.suit===deckFilter);
   el.innerHTML=`<div class="eyebrow">COLLECTION</div><div class="h1">牌卡圖鑑</div>
+    <div class="decktabs">${Object.entries(DECKS).filter(([k,d])=>d.ready).map(([k,d])=>`<button class="${vd===k?'on':''}" onclick="viewDeck='${k}';renderDeck()">${d.name}<small>${deckStats(k).got}/78</small></button>`).join('')}</div>
     <div class="summary">
       <div class="stat"><b>${got}<small style="font-size:13px">/78</small></b><span>已收集</span></div>
-      <div class="stat"><b>${total}</b><span>總抽牌次數</span></div>
-      <div class="stat" ${top>=0?`onclick="openCard(${top})" style="cursor:pointer"`:''}><b style="font-size:15px;line-height:1.9">${top>=0?CARDS[top].zh:'–'}</b><span>最常抽到${top>=0?` ×${cnt[top]}`:''}</span></div>
+      <div class="stat"><b>${total}</b><span>抽牌次數</span></div>
+      <div class="stat" ${top>=0?`onclick="openCard(${top},'${vd}')" style="cursor:pointer"`:''}><b style="font-size:15px;line-height:1.9">${top>=0?CARDS[top].zh:'–'}</b><span>最常抽到${top>=0?` ×${cnt[top]}`:''}</span></div>
     </div>
     <div class="box"><div class="lbl">花色分布</div>
       ${suitRows.map(([k,n])=>`<div class="bar"><span class="t">${n}</span><span class="track"><span class="fill" style="display:block;width:${suitCnt[k]/max*100}%"></span></span><span class="v">${suitCnt[k]}</span></div>`).join('')}
     </div>
     <div class="filters">${[['all','全部'],...suitRows].map(([k,n])=>`<button class="${deckFilter===k?'on':''}" onclick="deckFilter='${k}';renderDeck()">${n}</button>`).join('')}</div>
-    <div class="deckgrid">${list.map(c=>`<div class="dc${cnt[c.id]?' got':''}" onclick="openCard(${c.id})"><img src="${img(c,1)}" alt="${c.en}" loading="lazy">${cnt[c.id]?`<span class="n">×${cnt[c.id]}</span>`:''}</div>`).join('')}</div>
-    <p class="hint" style="margin-top:14px">抽過的牌會亮起來 ✨</p>`;
+    <div class="deckgrid">${list.map(c=>`<div class="dc${cnt[c.id]?' got':''}" onclick="openCard(${c.id},'${vd}')"><img src="${img(c,1,vd)}" style="${arStyle(vd)}" alt="${c.en}" loading="lazy">${cnt[c.id]?`<span class="n">×${cnt[c.id]}</span>`:''}</div>`).join('')}</div>
+    <p class="hint" style="margin-top:14px">用這套牌抽過的牌會亮起來 ✨</p>`;
 }
-function openCard(id){
-  const c=CARDS[id];
-  const dates=Object.keys(DB.days).filter(k=>DB.days[k].card===id).sort().reverse();
+function openCard(id,dk){
+  dk=dk||curDeck();const c=CARDS[id];
+  const dates=Object.keys(DB.days).filter(k=>DB.days[k].card===id&&deckOf(DB.days[k])===dk).sort().reverse();
   const fits=dates.map(k=>DB.days[k].fit).filter(Boolean);
   openSheet(`<button class="close" onclick="closeSheet()">✕</button>
-    <img class="card-img" src="${img(c)}" alt="" onclick="zoom('${img(c)}')">
+    <div class="eyebrow">${DECKS[dk].name}</div>
+    <img class="card-img" src="${img(c,0,dk)}" style="${arStyle(dk)}" alt="" onclick="zoom('${img(c,0,dk)}')">
     <p class="cname">${cardTitle(c)}</p><div class="cen">${c.en.toUpperCase()}</div>
     <div class="chips">${c.kw.split('・').map(x=>`<span class="chip">${x}</span>`).join('')}</div>
     <div class="box"><div class="lbl">今日指引</div><p class="letter">${c.msg}</p></div>
     <div class="box"><div class="lbl">需要注意</div><p>${c.care}</p></div>
-    <div class="box"><div class="lbl">我的紀錄</div>
+    <div class="box"><div class="lbl">我的紀錄（${DECKS[dk].name}）</div>
       ${dates.length?`<p>抽到 ${dates.length} 次${fits.length?`・平均吻合 ${(fits.reduce((a,b)=>a+b,0)/fits.length).toFixed(1)} ★`:''}</p>
-      <div class="datelist">${dates.map(k=>`<button onclick="openDay('${k}')">${k}</button>`).join('')}</div>`:'<p style="color:var(--sub)">還沒抽到過這張牌</p>'}
+      <div class="datelist">${dates.map(k=>`<button onclick="openDay('${k}')">${k}</button>`).join('')}</div>`:'<p style="color:var(--sub)">還沒用這套牌抽到過這張</p>'}
     </div>`);
 }
 
 /* =========================================================
-   7. 設定：備份 / 匯入 / 清除
+   8. 設定
    ========================================================= */
 function renderSet(){
   const n=Object.keys(DB.days).length;
   document.getElementById('tab-set').innerHTML=`<div class="eyebrow">SETTINGS</div><div class="h1">設定</div>
     <div class="box">
+      ${cloudLine()}
       <div class="row"><div>📦 匯出備份<small>把所有抽牌與日記存成一個檔案（目前 ${n} 天）</small></div><button class="btn small" onclick="exportData()">匯出</button></div>
-      <div class="row"><div>📥 匯入備份<small>換手機時，把備份檔匯入就能接續</small></div><button class="btn small ghost" onclick="document.getElementById('importFile').click()">選擇檔案</button></div>
-      <div class="row"><div>🗑️ 清除所有資料<small>無法復原，建議先匯出備份</small></div><button class="btn small ghost" id="clearBtn" onclick="clearAll(this)">清除</button></div>
+      <div class="row"><div>📥 匯入備份<small>把備份檔匯入，紀錄就會回來</small></div><button class="btn small ghost" onclick="document.getElementById('importFile').click()">選擇檔案</button></div>
+      <div class="row"><div>🗑️ 清除所有資料<small>${cloud.user?'會連雲端一起刪除，':''}無法復原，建議先匯出備份</small></div><button class="btn small ghost" id="clearBtn" onclick="clearAll(this)">清除</button></div>
     </div>
     <div class="box"><div class="lbl">🃏 塔羅牌組</div>
       <div class="decks">${Object.entries(DECKS).map(([k,d])=>`<button class="dk${curDeck()===k?' on':''}" ${d.ready?`onclick="setDeck('${k}')"`:'disabled'}>${d.ready?`<img src="cards/${d.dir}/thumb/major-00-the-fool.webp" alt="">`:'<span class="soon">🎨</span>'}${d.name}${d.ready?'':'<br><small>準備中</small>'}</button>`).join('')}</div>
@@ -610,36 +778,36 @@ function renderSet(){
     </div>
     <div class="box"><div class="lbl">🎴 牌背</div>
       <div class="backs">${Object.entries(BACKS).map(([k,b])=>{const bi=backImg(k);return `<button class="bk${backKey()===k?' on':''}" onclick="setBack('${k}')"><i style="background:${bi?`url(${bi}) center/cover`:`linear-gradient(160deg,${b[1]},${b[2]})`}" class="${bi?'art':''}"></i>${b[0]}</button>`;}).join('')}</div>
-      <p style="font-size:12px;color:var(--sub);margin:8px 0 0">「跟著牌組」：偉特用經典牌背、森林小動物用狐狸兔子牌背，嘟嘟一家之後也會有專屬牌背。</p>
+      <p style="font-size:12px;color:var(--sub);margin:8px 0 0">「跟著牌組」：每套牌用自己的專屬牌背。</p>
     </div>
     <input type="file" id="importFile" accept=".json,application/json" hidden onchange="importData(this)">
-    <div class="box"><div class="lbl">關於資料</div>
-      <p style="font-size:13px;color:var(--sub)">資料只存在「這支手機的這個瀏覽器」裡，不會上傳到任何地方。<br>清除瀏覽器資料或換手機會不見，建議每個月匯出一次備份 🙏<br>加到主畫面：Safari 分享 →「加入主畫面」。</p>
+    <div class="box"><div class="lbl">小提醒</div>
+      <p style="font-size:13px;color:var(--sub)">🌅 每天清晨 ${DAY_START}:00 換日，半夜寫日記還是算「今天」。<br>☁️ 登入 Google 後，資料會同步到雲端；沒網路時先存在手機，有網路再自動上傳。<br>📱 加到主畫面：Safari 分享 →「加入主畫面」。</p>
     </div>
-    <p class="hint" style="margin-top:18px">${BRAND} · Daily Tarot v1.1<br><small>傳統偉特塔羅：Pamela Colman Smith 1909（公有領域）</small></p>`;
+    <p class="hint" style="margin-top:18px">${BRAND}<br><small>${TAGLINE}</small><br><small style="opacity:.7">v2.0・傳統偉特塔羅：Pamela Colman Smith 1909（公有領域）</small></p>`;
 }
 function exportData(){
   const blob=new Blob([JSON.stringify(DB,null,1)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`塔羅日記-備份-${todayKey()}.json`;
-  document.body.appendChild(a);a.click();a.remove();DB.settings={...(DB.settings||{}),lastExport:Date.now()};save();toast('📦 備份已下載');
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`依期一會-備份-${todayKey()}.json`;
+  document.body.appendChild(a);a.click();a.remove();commitSettings({lastExport:Date.now()});toast('📦 備份已下載');
 }
 function importData(input){
   const f=input.files[0];if(!f)return;
   const rd=new FileReader();
   rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d.days)throw 0;
-      let n=0;for(const k in d.days){if(typeof d.days[k].card==='number'){DB.days[k]={...DB.days[k],...d.days[k]};n++;}}
-      save();toast(`📥 已匯入 ${n} 天`);renderAll();}
+      let n=0;for(const k in d.days){if(typeof d.days[k].card==='number'){DB.days[k]={...DB.days[k],...d.days[k]};commitDay(k);n++;}}
+      toast(`📥 已匯入 ${n} 天`);renderAll();}
     catch(e){toast('⚠️ 這不是正確的備份檔');}
     input.value='';};
   rd.readAsText(f);
 }
 function clearAll(btn){
   if(!btn.dataset.sure){btn.dataset.sure=1;btn.textContent='再按一次確認';btn.style.color='#b55';setTimeout(()=>{delete btn.dataset.sure;btn.textContent='清除';btn.style.color='';},3000);return;}
-  DB={days:{}};save();toast('已清除');renderAll();
+  const keys=Object.keys(DB.days);DB.days={};save();keys.forEach(cloudPutDay);toast('已清除');renderAll();
 }
 
 /* =========================================================
-   8. 共用：彈窗、放大、分頁切換
+   9. 共用：彈窗、放大、分頁切換、換日
    ========================================================= */
 function openSheet(html){const m=document.getElementById('modal');document.getElementById('sheet').innerHTML=html;m.classList.remove('hidden');document.getElementById('sheet').scrollTop=0;}
 function closeSheet(){document.getElementById('modal').classList.add('hidden');}
@@ -655,10 +823,15 @@ document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{
 });
 function renderAll(){renderToday();renderCal();renderDeck();renderSet();}
 
-// 過了午夜回到 App 時，自動換成新的一天
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&todayKey()!==curKey){curKey=todayKey();renderToday();}});
+// 每 30 秒更新倒數；過了清晨換日時間就換成新的一天
+function tick(){
+  if(todayKey()!==curKey){curKey=todayKey();const a=document.activeElement;if(!(a&&a.tagName==='TEXTAREA'))renderToday();return;}
+  const cd=document.getElementById('cd');if(cd)cd.textContent=countdownText();
+}
+setInterval(tick,30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
 
-load();applyBack();renderToday();
+load();applyBack();renderToday();initCloud();
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>

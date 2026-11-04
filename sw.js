@@ -1,6 +1,6 @@
 // 離線快取：網頁本身「先抓網路、失敗才用快取」（確保更新馬上看得到）
 // 牌面圖片「先用快取」（打開更快、沒網路也能看）
-const CACHE = 'tarot-v2';
+const CACHE = 'tarot-v3';
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', e => {
