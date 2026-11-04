@@ -493,18 +493,14 @@ function renderToday(justDrawn){
       <button class="btn line" onclick="shareCard('${curKey}',this)">💬 分享到 LINE</button>
       <button class="btn ghost" onclick="saveImage('${curKey}',this)">⬇️ 儲存圖片</button>
     </div>
-    <div class="box"><div class="lbl">🌅 早上的直覺</div>
-      <div class="sublbl" style="margin-top:0">看到這張牌，你的第一個感覺是？</div>
-      <textarea class="in" id="intuition" placeholder="例如：今天好像要放慢一點…" rows="2">${esc(rec.intuition)}</textarea>
-    </div>
+    <div class="box" id="intuBox"></div>
     <div class="box" id="diaryBox"></div>`;
   const [y,m,d]=curKey.split('-');const ly=`${+y-1}-${m}-${d}`;
   if(DB.days[ly]){const lc=CARDS[DB.days[ly].card];
     h+=`<div class="box lastyear" onclick="openDay('${ly}')"><img src="${img(lc,1,deckOf(DB.days[ly]))}" alt=""><div><div class="lbl">🕰️ 去年的今天</div>${cardTitle(lc)}</div></div>`;}
   h+=`<p class="endnote">依期一會｜${TAGLINE}</p>`;
   el.innerHTML=h;
-  const it=document.getElementById('intuition');
-  it.onblur=()=>{const v=it.value.trim();if(v!==(rec.intuition||'')){rec.intuition=v;commitDay(curKey);}};
+  renderIntuition(document.getElementById('intuBox'),curKey);
   renderDiaryForm(document.getElementById('diaryBox'),curKey,'🌙 今晚的日記');
 }
 /* 沒登入雲端時：超過 30 天沒備份就提醒 */
@@ -530,6 +526,28 @@ function drawCard(){
     setTimeout(()=>renderToday(true),1500);
   };
   fi.onload=go;fi.onerror=go;fi.src=img(CARDS[idx],0,curDeck());
+}
+/* 早上的直覺：跟日記一樣，預設瀏覽模式，按「新增／編輯」才能修改 */
+function renderIntuition(box,key,editing){
+  const rec=DB.days[key],t='<div class="lbl">🌅 早上的直覺</div>';
+  if(!editing){
+    box.innerHTML=t+(rec.intuition?`<div class="dview"><p class="dtext" style="margin:0">${esc(rec.intuition)}</p></div>
+      <div class="btns"><button class="btn ghost" data-edit>✏️ 編輯直覺</button></div>`:`
+      <p class="dempty">看到這張牌，你的第一個感覺是？</p>
+      <div class="btns"><button class="btn" data-edit>＋ 新增直覺</button></div>`);
+    box.querySelector('[data-edit]').onclick=()=>renderIntuition(box,key,true);
+    return;
+  }
+  box.innerHTML=t+`<div class="sublbl" style="margin-top:0">看到這張牌，你的第一個感覺是？</div>
+    <textarea class="in" rows="2" placeholder="例如：今天好像要放慢一點…">${esc(rec.intuition)}</textarea>
+    <div class="btns"><button class="btn ghost" data-cancel>取消</button><button class="btn" data-save>儲存直覺</button></div>`;
+  box.querySelector('[data-cancel]').onclick=()=>renderIntuition(box,key,false);
+  box.querySelector('[data-save]').onclick=()=>{
+    rec.intuition=box.querySelector('textarea').value.trim();
+    if(commitDay(key))toast('🌅 直覺已儲存');
+    renderIntuition(box,key,false);
+  };
+  box.querySelector('textarea').focus();
 }
 /* 日記（今日頁和月曆彈窗共用）：預設是「閱讀模式」，按「新增／編輯」才會打開表單 */
 function renderDiaryForm(box,key,title,editing){
@@ -746,9 +764,10 @@ function openDay(k){
     <div class="chips">${c.kw.split('・').map(x=>`<span class="chip">${x}</span>`).join('')}</div>
     <div class="box"><div class="lbl">今日指引</div><p class="letter">${c.msg}</p></div>
     <div class="box"><div class="lbl">需要注意</div><p>${c.care}</p></div>
-    ${rec.intuition?`<div class="box"><div class="lbl">🌅 早上的直覺</div><p>${esc(rec.intuition)}</p></div>`:''}
+    <div class="box" id="sheetIntu"></div>
     <div class="box" id="sheetDiary"></div>
     <div class="btns"><button class="btn line" onclick="shareCard('${k}',this)">💬 分享這天的牌</button></div>`);
+  renderIntuition(document.getElementById('sheetIntu'),k);
   renderDiaryForm(document.getElementById('sheetDiary'),k,'🌙 這天的日記');
 }
 
