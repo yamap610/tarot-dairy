@@ -147,9 +147,10 @@ textarea.in:focus{border-color:var(--milk)}
 /* nav */
 .nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,253,248,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;justify-content:center;padding:6px 0 calc(6px + env(safe-area-inset-bottom));z-index:10}
 .nav div{display:flex;max-width:480px;width:100%}
-.nav button{flex:1;display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--sub);gap:1px}
-.nav button .i{font-size:21px;line-height:1.2}
-.nav button.on{color:var(--ink);font-weight:600}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--sub);gap:1px;margin:0 6px;padding:5px 0 3px;border-radius:14px;transition:.2s}
+.nav button .i{font-size:21px;line-height:1.2;filter:grayscale(1);opacity:.5;transition:.2s}
+.nav button.on{color:var(--ink);font-weight:700;background:#efe5d3}
+.nav button.on .i{filter:none;opacity:1}
 
 /* modal */
 .modal{position:fixed;inset:0;background:rgba(50,45,35,.4);z-index:20;display:flex;align-items:flex-end;justify-content:center}
@@ -171,6 +172,12 @@ textarea.in:focus{border-color:var(--milk)}
 .bk i::after{content:"✦";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fffdf8;font-style:normal;font-size:14px}
 .bk i::before{content:"";position:absolute;inset:3px;border:1px solid rgba(255,253,248,.7);border-radius:4px}
 .endnote{text-align:center;font-family:var(--serif);font-size:12px;color:var(--sub);opacity:.6;margin:26px 0 4px;letter-spacing:.05em}
+.dview{background:#fbf7ef;border-radius:12px;padding:12px 14px;margin-top:6px}
+.dmeta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dmood{font-size:26px;line-height:1}
+.dstars{color:var(--gold);letter-spacing:2px;font-size:17px}.dstars i{color:var(--line);font-style:normal}
+.dtext{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;line-height:1.8}
+.dempty{color:var(--sub);font-size:14px;margin:6px 0 0}
 .countdown{text-align:center;font-size:13px;color:var(--sub);margin:14px 0 -8px}
 .countdown b{color:var(--gold);font-weight:600}
 .decktabs{display:flex;gap:6px;margin:12px 0 4px}
@@ -523,30 +530,49 @@ function drawCard(){
   };
   fi.onload=go;fi.onerror=go;fi.src=img(CARDS[idx],0,curDeck());
 }
-/* 日記表單（今日頁和月曆彈窗共用） */
-function renderDiaryForm(box,key,title){
+/* 日記（今日頁和月曆彈窗共用）：預設是「閱讀模式」，按「新增／編輯」才會打開表單 */
+function renderDiaryForm(box,key,title,editing){
   const rec=DB.days[key];
+  const has=!!(rec.diary||rec.mood!=null||rec.fit);
+  const savedTxt=rec.savedAt?'上次儲存：'+new Date(rec.savedAt).toLocaleString('zh-TW',{hour12:false}):'';
+  if(!editing){
+    box.innerHTML=`<div class="lbl">${title}</div>`+(has?`
+      <div class="dview">
+        <div class="dmeta">${rec.mood!=null?`<span class="dmood">${MOODS[rec.mood]}</span>`:''}
+          ${rec.fit?`<span class="dstars">${'★'.repeat(rec.fit)}<i>${'★'.repeat(5-rec.fit)}</i></span><span class="fitlbl">${FITS[rec.fit]}</span>`:''}</div>
+        ${rec.diary?`<p class="dtext">${esc(rec.diary)}</p>`:''}
+      </div>
+      <div class="btns"><button class="btn ghost" data-edit>✏️ 編輯日記</button></div>
+      <div class="saved">${savedTxt}</div>`:`
+      <p class="dempty">還沒有寫這天的日記</p>
+      <div class="btns"><button class="btn" data-edit>＋ 新增日記</button></div>`);
+    box.querySelector('[data-edit]').onclick=()=>renderDiaryForm(box,key,title,true);
+    return;
+  }
   const st={mood:rec.mood??null,fit:rec.fit||0};
   box.innerHTML=`<div class="lbl">${title}</div>
     <div class="sublbl" style="margin-top:0">今天的心情</div>
     <div class="moods">${MOODS.map((m,i)=>`<button class="mood${st.mood===i?' on':''}" data-i="${i}">${m}</button>`).join('')}</div>
     <div class="sublbl">今天發生了什麼？</div>
-    <textarea class="in" rows="4" placeholder="寫下今天的事、心情，或跟牌意有關的小發現…">${esc(rec.diary)}</textarea>
+    <textarea class="in" rows="5" placeholder="寫下今天的事、心情，或跟牌意有關的小發現…">${esc(rec.diary)}</textarea>
     <div class="sublbl">跟今天的牌吻合嗎？</div>
     <div class="stars">${[1,2,3,4,5].map(n=>`<button class="star${n<=st.fit?' on':''}" data-n="${n}">★</button>`).join('')}<span class="fitlbl">${FITS[st.fit]||'點星星評分'}</span></div>
-    <div class="btns"><button class="btn" data-save>儲存日記</button></div>
-    <div class="saved">${rec.savedAt?'上次儲存：'+new Date(rec.savedAt).toLocaleString('zh-TW',{hour12:false}):''}</div>`;
+    <div class="btns"><button class="btn ghost" data-cancel>取消</button><button class="btn" data-save>儲存日記</button></div>`;
   box.querySelectorAll('.mood').forEach(b=>b.onclick=()=>{
-    st.mood=+b.dataset.i;box.querySelectorAll('.mood').forEach(x=>x.classList.toggle('on',x===b));});
+    st.mood=st.mood===+b.dataset.i?null:+b.dataset.i;box.querySelectorAll('.mood').forEach(x=>x.classList.toggle('on',+x.dataset.i===st.mood));});
   box.querySelectorAll('.star').forEach(b=>b.onclick=()=>{
     st.fit=+b.dataset.n;box.querySelectorAll('.star').forEach(x=>x.classList.toggle('on',+x.dataset.n<=st.fit));
     box.querySelector('.fitlbl').textContent=FITS[st.fit];});
+  box.querySelector('[data-cancel]').onclick=()=>renderDiaryForm(box,key,title,false);
   box.querySelector('[data-save]').onclick=()=>{
     rec.mood=st.mood;rec.fit=st.fit;rec.diary=box.querySelector('textarea').value.trim();rec.savedAt=Date.now();
-    if(commitDay(key)){toast(cloud.user?'🌙 日記已儲存，並同步到雲端':'🌙 日記已儲存');box.querySelector('.saved').textContent='上次儲存：'+new Date(rec.savedAt).toLocaleString('zh-TW',{hour12:false});}
+    if(commitDay(key))toast(cloud.user?'🌙 日記已儲存，並同步到雲端':'🌙 日記已儲存');
+    renderDiaryForm(box,key,title,false);
     if(document.getElementById('tab-cal').classList.contains('active'))renderCal();
   };
+  box.querySelector('textarea').focus();
 }
+
 /* =========================================================
    5. 分享圖（今日指引卡片）＋ 月回顧圖片
    ========================================================= */
@@ -580,11 +606,10 @@ async function makeShareBlob(key){
   const x=cv.getContext('2d');
   x.fillStyle='#f6f2ea';x.fillRect(0,0,W,H);
   x.textAlign='center';x.textBaseline='alphabetic';
-  x.fillStyle='#a8905e';x.font=`600 30px ${S}`;x.fillText('依期一會',W/2,112);
-  x.fillStyle='#3c4a3e';x.font=`700 84px ${S}`;x.fillText('今日指引',W/2,200);
-  x.fillStyle='#8a8478';x.font=`500 38px ${S}`;x.fillText(prettyDate(key),W/2,275);
+  x.fillStyle='#3c4a3e';x.font=`700 84px ${S}`;x.fillText('今日指引',W/2,170);
+  x.fillStyle='#8a8478';x.font=`500 38px ${S}`;x.fillText(prettyDate(key),W/2,245);
   const dk=deckOf(rec),im=await loadImg(img(c,0,dk));
-  const ch=840,cw=Math.round(ch*DECKS[dk].ratio),cx=(W-cw)/2,cy=360,r=26;
+  const ch=840,cw=Math.round(ch*DECKS[dk].ratio),cx=(W-cw)/2,cy=320,r=26;
   x.save();x.shadowColor='rgba(80,70,50,.25)';x.shadowBlur=40;x.shadowOffsetY=16;
   x.fillStyle='#fff';x.beginPath();x.roundRect(cx,cy,cw,ch,r);x.fill();x.restore();
   x.save();x.beginPath();x.roundRect(cx,cy,cw,ch,r);x.clip();drawCover(x,im,cx,cy,cw,ch);x.restore();
@@ -597,7 +622,7 @@ async function makeShareBlob(key){
   y+=74;for(const l of wrap(x,c.msg,860)){x.fillText(l,W/2,y);y+=66;}
   x.fillStyle='#8a8478';x.font=`500 34px ${S}`;
   y+=14;for(const l of wrap(x,'需要注意：'+c.care,860)){x.fillText(l,W/2,y);y+=54;}
-  y+=46;x.fillStyle='#b9ab92';x.font=`500 26px ${S}`;x.fillText(IMG_FOOT,W/2,y);
+  y+=46;x.fillStyle='#b9ab92';x.font=`500 26px ${S}`;x.fillText('依期一會｜'+IMG_FOOT,W/2,y);
   return finishCanvas(cv,W,Math.min(H,y+70));
 }
 async function makeMonthBlob(Y,M){
@@ -605,11 +630,10 @@ async function makeMonthBlob(Y,M){
   const x=cv.getContext('2d');
   try{await document.fonts.load(`700 72px ${S}`,BRAND+IMG_FOOT+'年月抽牌天數寫日記平均吻合心情本月最常抽到日一二三四五六');}catch(e){}
   x.fillStyle='#f6f2ea';x.fillRect(0,0,W,cv.height);x.textAlign='center';
-  x.fillStyle='#a8905e';x.font=`600 30px ${S}`;x.fillText('依期一會',W/2,115);
-  x.fillStyle='#3c4a3e';x.font=`700 76px ${S}`;x.fillText(`${Y} 年 ${M+1} 月`,W/2,205);
+    x.fillStyle='#3c4a3e';x.font=`700 76px ${S}`;x.fillText(`${Y} 年 ${M+1} 月`,W/2,170);
   // 月曆
   const first=new Date(Y,M,1).getDay(),days=new Date(Y,M+1,0).getDate(),rows=Math.ceil((first+days)/7);
-  const gap=12,cw=(W-120-gap*6)/7,ch=cw*1.5,gx=60,gy=300;
+  const gap=12,cw=(W-120-gap*6)/7,ch=cw*1.5,gx=60,gy=260;
   x.font=`500 26px ${S}`;x.fillStyle='#8a8478';
   [...WD].forEach((w,i)=>x.fillText(w,gx+i*(cw+gap)+cw/2,gy-14));
   const keys=[];for(let d=1;d<=days;d++)keys.push(`${Y}-${pad(M+1)}-${pad(d)}`);
@@ -653,7 +677,7 @@ async function makeMonthBlob(Y,M){
     x.fillStyle='#8a8478';x.font=`500 26px ${S}`;x.fillText(tc.kw.split('・').join(' · '),236,y+164);
     y+=210;
   }
-  y+=62;x.textAlign='center';x.fillStyle='#b9ab92';x.font=`500 26px ${S}`;x.fillText(IMG_FOOT,W/2,y);
+  y+=62;x.textAlign='center';x.fillStyle='#b9ab92';x.font=`500 26px ${S}`;x.fillText('依期一會｜'+IMG_FOOT,W/2,y);
   return finishCanvas(cv,W,y+66);
 }
 function shareText(key){const c=CARDS[DB.days[key].card];
