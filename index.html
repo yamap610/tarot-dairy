@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>塔羅日記 · Daily Tarot</title>
+<meta name="theme-color" content="#f6f2ea">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="塔羅日記">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f2ea; --paper:#fffdf8; --ink:#3c4a3e; --sub:#8a8478; --gold:#a8905e;
+  --blue:#93a7b8; --blue-d:#6f8598; --milk:#e6d8c4; --line:#e8e0d2; --rose:#c9a49a;
+  --serif:"Noto Serif TC","Songti TC",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.7}
+button{font:inherit;color:inherit;border:none;background:none;cursor:pointer}
+textarea{font:inherit;color:var(--ink)}
+#app{max-width:480px;margin:0 auto;padding:22px 18px calc(96px + env(safe-area-inset-bottom))}
+.tab{display:none}.tab.active{display:block;animation:fade .35s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* header */
+.eyebrow{font-size:12px;letter-spacing:.18em;color:var(--gold);font-weight:600}
+.h1{font-family:var(--serif);font-weight:700;font-size:28px;margin:4px 0 2px;letter-spacing:.04em}
+.meta{font-size:13px;color:var(--sub);letter-spacing:.05em}
+.h2{font-family:var(--serif);font-weight:700;font-size:18px;margin:0 0 10px}
+
+/* card stage */
+.stage{perspective:1400px;width:min(64vw,280px);aspect-ratio:var(--ar,2/3);margin:26px auto 18px}
+.flipper{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 1s cubic-bezier(.45,.1,.2,1)}
+.flipper.flipped{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:14px;overflow:hidden;box-shadow:0 10px 28px rgba(80,70,50,.18)}
+.face img{width:100%;height:100%;object-fit:cover;display:block}
+.front{transform:rotateY(180deg)}
+.back{background:
+  radial-gradient(circle at 50% 50%,rgba(255,253,248,.35) 0 18%,transparent 19%),
+  repeating-radial-gradient(circle at 50% 50%,transparent 0 10px,rgba(255,253,248,.13) 10px 11px),
+  linear-gradient(160deg,var(--back1,#9fb2c2),var(--back2,#7f95a8));
+  display:flex;align-items:center;justify-content:center}
+.back::before{content:"";position:absolute;inset:10px;border:1.5px solid rgba(255,253,248,.7);border-radius:9px}
+.back::after{content:"☾ ✦ ☽";position:absolute;bottom:22px;left:0;right:0;text-align:center;color:#fffdf8;letter-spacing:.3em;font-size:13px;opacity:.85}
+.back .sym{font-size:46px;color:#fffdf8;text-shadow:0 0 18px rgba(255,255,255,.6)}
+body.art-back .back{background:#f6efe2 url(cards/back.webp) center/cover}
+body.art-back .back::before,body.art-back .back::after,body.art-back .back .sym{display:none}
+.banner{display:flex;align-items:center;gap:10px;background:#fbf3e4;border:1px solid #ecdcbf;border-radius:14px;padding:10px 14px;margin:0 0 14px;font-size:13px}
+.banner span{flex:1}
+.decks{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.dk{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--sub);padding:8px 4px;border-radius:12px;border:1.5px solid transparent;text-align:center;line-height:1.4}
+.dk.on{border-color:var(--gold);background:#fbf5ea;color:var(--ink);font-weight:600}
+.dk img,.dk .soon{width:56px;height:90px;object-fit:cover;border-radius:6px;box-shadow:0 2px 6px rgba(80,70,50,.18)}
+.dk .soon{display:flex;align-items:center;justify-content:center;background:var(--line);font-size:22px;box-shadow:none}
+.dk:disabled{opacity:.6}
+.idle{animation:float 3.2s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0) rotate(-.6deg)}50%{transform:translateY(-7px) rotate(.6deg)}}
+.hint{text-align:center;color:var(--sub);font-size:14px}
+.card-img{display:block;width:min(64vw,280px);aspect-ratio:var(--ar,2/3);object-fit:cover;margin:24px auto 14px;border-radius:14px;box-shadow:0 10px 28px rgba(80,70,50,.18);cursor:zoom-in}
+
+.cname{text-align:center;font-family:var(--serif);font-weight:700;font-size:22px;margin:0}
+.cen{text-align:center;color:var(--sub);font-size:13px;letter-spacing:.08em}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0 4px}
+.chip{background:var(--paper);border:1px solid var(--line);color:var(--gold);font-size:12px;padding:2px 10px;border-radius:20px}
+
+.box{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-top:14px}
+.box .lbl{font-size:12px;color:var(--gold);letter-spacing:.12em;font-weight:600;margin-bottom:4px}
+.box p{margin:0}
+.letter{font-family:var(--serif);font-size:16px;line-height:1.9}
+
+.btns{display:flex;gap:10px;margin-top:16px}
+.btn{flex:1;padding:12px 10px;border-radius:14px;background:var(--ink);color:#fffdf8;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn.line{background:#06c755}
+.btn.ghost{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.btn.small{flex:none;padding:8px 14px;font-size:13px}
+.btn:disabled{opacity:.5}
+
+textarea.in{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;resize:vertical;min-height:70px;outline:none}
+textarea.in:focus{border-color:var(--milk)}
+.moods{display:flex;gap:6px;margin:6px 0 10px}
+.mood{flex:1;font-size:22px;padding:6px 0;border-radius:12px;border:1px solid var(--line);background:#fff;filter:grayscale(.6);opacity:.65}
+.mood.on{filter:none;opacity:1;border-color:var(--gold);background:#fbf5ea}
+.stars{display:flex;gap:4px;align-items:center;margin:4px 0}
+.star{font-size:26px;color:var(--line);padding:0 2px}
+.star.on{color:var(--gold)}
+.fitlbl{font-size:13px;color:var(--sub);margin-left:6px}
+.sublbl{font-size:13px;color:var(--sub);margin:12px 0 2px}
+.saved{font-size:12px;color:var(--sub);text-align:right;margin-top:6px}
+
+.lastyear{display:flex;gap:12px;align-items:center;cursor:pointer}
+.lastyear img{width:48px;border-radius:6px}
+
+/* calendar */
+.calhead{display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px}
+.calhead button{font-size:20px;padding:4px 12px;color:var(--sub)}
+.calhead .mon{font-family:var(--serif);font-weight:700;font-size:18px}
+.grid7{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.wd{text-align:center;font-size:12px;color:var(--sub)}
+.cell{aspect-ratio:2/3;border-radius:8px;background:var(--paper);border:1px solid var(--line);position:relative;overflow:hidden;font-size:12px;color:var(--sub);padding:2px 4px}
+.cell.empty{background:none;border:none}
+.cell.has{border:none;padding:0;cursor:pointer}
+.cell.has img{width:100%;height:100%;object-fit:cover;display:block}
+.cell.has .d{position:absolute;top:3px;left:3px;background:rgba(255,253,248,.9);border-radius:6px;padding:0 4px;font-size:11px;color:var(--ink);line-height:1.5}
+.cell.has .dot{position:absolute;bottom:3px;right:3px;font-size:11px;background:rgba(255,253,248,.9);border-radius:6px;padding:0 3px}
+.cell.today{outline:2px solid var(--gold);outline-offset:1px}
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center}
+.stat b{display:block;font-family:var(--serif);font-size:20px}
+.stat span{font-size:12px;color:var(--sub)}
+
+/* deck */
+.filters{display:flex;gap:6px;overflow-x:auto;margin:12px 0;padding-bottom:4px}
+.filters button{flex:none;font-size:13px;padding:5px 12px;border-radius:20px;background:var(--paper);border:1px solid var(--line);color:var(--sub)}
+.filters button.on{background:var(--ink);color:#fffdf8;border-color:var(--ink)}
+.deckgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.dc{position:relative;cursor:pointer}
+.dc img{width:100%;aspect-ratio:var(--ar,2/3);object-fit:cover;border-radius:7px;display:block;filter:grayscale(1);opacity:.38;transition:.3s}
+.dc.got img{filter:none;opacity:1;box-shadow:0 3px 8px rgba(80,70,50,.15)}
+.dc .n{position:absolute;top:3px;right:3px;background:var(--gold);color:#fff;font-size:10px;border-radius:8px;padding:0 5px;line-height:1.6}
+.bar{display:flex;align-items:center;gap:8px;font-size:13px;margin:5px 0}
+.bar .t{width:96px;color:var(--sub);white-space:nowrap}
+.bar .track{flex:1;height:8px;background:var(--line);border-radius:6px;overflow:hidden}
+.bar .fill{height:100%;background:var(--blue);border-radius:6px}
+.bar .v{width:28px;text-align:right;color:var(--sub)}
+
+/* settings */
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border:none}
+.row small{display:block;color:var(--sub);font-size:12px;line-height:1.5}
+
+/* nav */
+.nav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,253,248,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;justify-content:center;padding:6px 0 calc(6px + env(safe-area-inset-bottom));z-index:10}
+.nav div{display:flex;max-width:480px;width:100%}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--sub);gap:1px}
+.nav button .i{font-size:21px;line-height:1.2}
+.nav button.on{color:var(--ink);font-weight:600}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(50,45,35,.4);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.modal.hidden,.zoom.hidden{display:none}
+.sheet{background:var(--bg);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:18px 18px calc(24px + env(safe-area-inset-bottom));animation:up .3s ease}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.sheet .close{float:right;font-size:22px;color:var(--sub);padding:0 6px}
+.sheet .card-img{width:min(48vw,200px);margin:14px auto 10px}
+.share-preview{width:100%;border-radius:12px;margin:10px 0;box-shadow:0 6px 18px rgba(80,70,50,.15)}
+.zoom{position:fixed;inset:0;background:rgba(30,28,24,.88);z-index:30;display:flex;align-items:center;justify-content:center;padding:20px}
+.zoom img{max-width:100%;max-height:100%;border-radius:14px}
+#toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--ink);color:#fffdf8;padding:8px 16px;border-radius:20px;font-size:13px;opacity:0;transition:.3s;pointer-events:none;z-index:40;white-space:nowrap}
+#toast.show{opacity:1}
+.backs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.bk{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--sub);padding:6px 0;border-radius:12px;border:1.5px solid transparent}
+.bk.on{border-color:var(--gold);background:#fbf5ea;color:var(--ink);font-weight:600}
+.bk i{display:block;width:44px;aspect-ratio:2/3;border-radius:6px;position:relative;box-shadow:0 2px 6px rgba(80,70,50,.18)}
+.bk i.art::before,.bk i.art::after{display:none}
+.bk i::after{content:"✦";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fffdf8;font-style:normal;font-size:14px}
+.bk i::before{content:"";position:absolute;inset:3px;border:1px solid rgba(255,253,248,.7);border-radius:4px}
+.datelist{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.datelist button{font-size:12px;padding:3px 10px;border-radius:20px;background:var(--paper);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<main id="app">
+  <section id="tab-today" class="tab active"></section>
+  <section id="tab-cal" class="tab"></section>
+  <section id="tab-deck" class="tab"></section>
+  <section id="tab-set" class="tab"></section>
+</main>
+
+<nav class="nav"><div>
+  <button data-tab="today" class="on"><span class="i">🃏</span>今日</button>
+  <button data-tab="cal"><span class="i">📅</span>日記</button>
+  <button data-tab="deck"><span class="i">🗂️</span>圖鑑</button>
+  <button data-tab="set"><span class="i">⚙️</span>設定</button>
+</div></nav>
+
+<div id="modal" class="modal hidden"><div class="sheet" id="sheet"></div></div>
+<div id="zoom" class="zoom hidden"><img alt=""></div>
+<div id="toast"></div>
+
+<script>
+/* =========================================================
+   1. 牌卡資料（78 張）
+   每張：關鍵字 kw、今日指引 msg、需要注意 care
+   ========================================================= */
+const BRAND = '塔羅日記';
+const MAJOR = [
+ ['the-fool','The Fool','愚者','新開始・自由・信任','今天適合帶著好奇心出發，不用把每一步都想清楚，先跨出去就好。','衝動之前停一秒，確認重要的東西都帶在身上。'],
+ ['the-magician','The Magician','魔術師','創造・行動力・資源','你手上已經有需要的工具了，今天是把想法變成行動的好日子。','別只停在計畫，也小心說得多、做得少。'],
+ ['the-high-priestess','The High Priestess','女祭司','直覺・靜默・內在智慧','今天多聽少說，答案可能在安靜的時候自己浮現。相信你的直覺。','資訊還沒完整前先觀察，不必急著表態。'],
+ ['the-empress','The Empress','皇后','豐盛・滋養・美感','好好照顧自己，也享受身邊的美好。吃一頓好吃的、摸摸柔軟的東西都好。','照顧別人的同時，別忘了把自己也放進名單。'],
+ ['the-emperor','The Emperor','皇帝','秩序・責任・穩定','今天適合建立規則、排好優先順序，用穩穩的步調掌握局面。','堅持原則很好，但別變得太固執或想控制一切。'],
+ ['the-hierophant','The Hierophant','教皇','傳統・學習・指引','向有經驗的人請教，或回到熟悉可靠的方法，事情會更順。','別因為「大家都這樣」就忽略自己真正的想法。'],
+ ['the-lovers','The Lovers','戀人','選擇・連結・真心','今天的重點是「選擇」：選你真心想要的，而不是「應該」要的。','關係中多一點坦誠溝通，不要只靠猜測對方的心意。'],
+ ['the-chariot','The Chariot','戰車','意志・前進・掌控','目標明確就勇往直前，今天你的意志力會帶你突破阻礙。','別讓情緒搶走方向盤，兩股拉扯的力量要先穩住。'],
+ ['strength','Strength','力量','溫柔的力量・耐心・勇氣','真正的力量是溫柔的。用耐心和包容，面對今天難搞的人事物。','情緒上來時先深呼吸，硬碰硬只會更累。'],
+ ['the-hermit','The Hermit','隱者','獨處・沉澱・尋找答案','給自己一段安靜的時間，關掉雜音，聽聽內心真正的聲音。','獨處是充電不是逃避，需要幫忙時還是可以開口。'],
+ ['wheel-of-fortune','Wheel of Fortune','命運之輪','轉機・循環・順勢','事情正在轉動，今天可能有意外的好消息或轉折，順著流走就好。','好運壞運都會過去，別把一時的起落看得太重。'],
+ ['justice','Justice','正義','公平・誠實・因果','今天適合做理性的判斷，把事情攤開來看，誠實面對就會有好結果。','做決定前聽聽雙方說法，也為自己的選擇負責。'],
+ ['the-hanged-man','The Hanged Man','吊人','暫停・換個角度・等待','卡住的時候不妨停下來，換個角度看，可能會發現新的出路。','暫停不是失敗，別因為焦急而硬推。'],
+ ['death','Death','死神','結束・轉變・重生','有些事情到了該放下的時候。結束，是為了讓新的東西進來。','抓得越緊越痛，試著溫柔地跟舊習慣說再見。'],
+ ['temperance','Temperance','節制','平衡・調和・剛剛好','找回平衡感吧。工作與休息、付出與接受，都調成剛剛好的比例。','小心過與不及，吃喝和花錢都適量就好。'],
+ ['the-devil','The Devil','惡魔','慾望・束縛・誘惑','誠實看看是什麼正在綁住你。意識到了，就有機會鬆開它。','留意拖延、狂滑手機、衝動購物這些停不下來的小習慣。'],
+ ['the-tower','The Tower','高塔','突變・打破・真相','突如其來的變化可能打亂計畫，但它也幫你拆掉了不穩的地基。','保持冷靜，先處理眼前最重要的事，別在慌亂中做大決定。'],
+ ['the-star','The Star','星星','希望・療癒・靈感','今天是充滿希望的一天。放慢腳步，讓自己被溫柔地療癒。','願望很美，也記得替它安排一個小小的行動。'],
+ ['the-moon','The Moon','月亮','不安・潛意識・迷霧','有些事還看不清楚，沒關係，先別急著下定論，讓迷霧慢慢散去。','小心想太多或被傳言誤導，有疑問就直接確認。'],
+ ['the-sun','The Sun','太陽','快樂・活力・成功','今天陽光滿滿！大方展現自己，和喜歡的人一起分享快樂吧。','開心之餘也注意身體，別一下子把能量用光。'],
+ ['judgement','Judgement','審判','覺醒・召喚・重新評估','回頭看看自己走過的路，聽見心裡那個一直呼喚你的聲音。','對過去的自己多一點原諒，不必一直重播舊錯誤。'],
+ ['the-world','The World','世界','完成・圓滿・整合','一段旅程即將圓滿，今天值得為自己的努力好好慶祝一下。','完成之後記得休息，再出發去下一段旅程。'],
+];
+const SUITS = [
+ {key:'wands',prefix:'wands',zh:'權杖',en:'Wands',el:'火・行動',emoji:'🔥',data:[
+  ['靈感・熱情・新計畫','心裡冒出的新點子值得被認真對待，今天就動手開始吧。','熱度來得快也去得快，先寫下來，別讓它溜走。'],
+  ['規劃・遠見・抉擇','站高一點看未來，今天適合思考下一步要往哪裡走。','想得太久會錯過時機，規劃完就要踏出去。'],
+  ['拓展・等待成果・眼光放遠','你播下的種子正在發芽，保持耐心，好消息正在路上。','別只盯著遠方，也確認手邊的準備是否到位。'],
+  ['慶祝・安定・家的溫暖','今天適合和家人朋友小小慶祝，享受安穩帶來的幸福感。','別因為忙碌而錯過值得紀念的小時刻。'],
+  ['競爭・摩擦・意見不合','可能會遇到意見衝突，把它當作激盪想法的機會就好。','爭論時對事不對人，別為了贏而傷了和氣。'],
+  ['勝利・肯定・被看見','你的努力會被看見，今天可以大方接受讚美和肯定。','得意時保持謙虛，也謝謝一路幫過你的人。'],
+  ['堅守立場・勇氣・不退讓','對你重要的事，今天要勇敢守住自己的立場。','別把每個人都當成敵人，也不必事事辯到底。'],
+  ['快速・進展・消息','事情進展得很快，訊息和機會會密集出現，把握節奏。','動作快也要顧細節，回訊息前先看清楚內容。'],
+  ['堅持・韌性・最後一哩','你已經撐了很久，再一下下就到了，別在最後放棄。','累了就休息，防備心太重也會讓自己更累。'],
+  ['負擔・責任太多・壓力','你扛了好多事，今天試著列出來，看看哪些可以放下或分出去。','別什麼都自己來，學著說「請幫我一下」。'],
+  ['好奇・探索・好消息','用孩子般的好奇心去嘗試新事物，今天可能收到讓人興奮的消息。','小心三分鐘熱度，選一件事好好做完。'],
+  ['冒險・衝勁・熱血','今天行動力爆棚，適合去做一直想做卻還沒做的事。','衝太快容易忽略別人的感受，記得踩一下煞車。'],
+  ['自信・魅力・溫暖','你今天閃閃發光，帶著自信做自己，自然會吸引好的人事物。','別讓別人的眼光左右你，也小心一時的比較心。'],
+  ['領導・遠見・決斷','今天適合扛起主導權，用你的經驗和遠見帶領方向。','做決斷之餘也聽聽別人的意見，別太急躁。'],
+ ]},
+ {key:'cups',prefix:'cups',zh:'聖杯',en:'Cups',el:'水・情感',emoji:'💧',data:[
+  ['新的感情・愛・心被打開','打開心房，今天可能感受到滿滿的愛與溫柔，也適合表達心意。','好好接住別人的好意，不要急著推開。'],
+  ['連結・互相吸引・夥伴','今天適合和重要的人好好相處，真誠的交流會讓關係更靠近。','關係是雙向的，聆聽和表達一樣重要。'],
+  ['友誼・歡聚・分享','約朋友聊聊天、一起吃點好吃的，快樂分享出去會變更多。','歡樂時光別過量，吃喝和花費都要適度。'],
+  ['倦怠・不滿足・錯過機會','如果覺得什麼都提不起勁，抬頭看看，也許有被你忽略的禮物。','別一直沉在「好無聊」的情緒裡，給新的邀約一個機會。'],
+  ['失落・遺憾・放不下','難過是正常的，但記得回頭看看，身後還有兩杯是完好的。','別讓遺憾占滿整天，允許自己哭，也允許自己往前。'],
+  ['回憶・童心・純真','今天可能想起過去的美好，或從孩子身上感受到簡單的快樂。','懷念很好，但別一直活在「以前比較好」裡。'],
+  ['幻想・選擇太多・白日夢','選項很多很迷人，先分清楚哪些是真的想要、哪些只是想像。','小心不切實際的期待，決定前多查證一下。'],
+  ['離開・尋找更深的意義','如果某件事已經不再滋養你，今天可以想想是否該轉身離開。','離開前想清楚原因，讓它是選擇，而不是逃避。'],
+  ['滿足・願望實現・享受','今天是心滿意足的一天，好好享受吧，你值得被寵愛。','滿足之餘別過度放縱，也別太在意別人的眼光。'],
+  ['家庭幸福・圓滿・和諧','家人與愛的人就是最大的幸福，今天適合珍惜相聚的時光。','不必追求完美的畫面，平凡的日常就很美。'],
+  ['敏感・創意・溫柔訊息','今天容易被小事感動，適合寫寫字、畫畫或說出心情。','情緒敏感時別太快當真，給自己一點緩衝。'],
+  ['浪漫・邀請・跟隨心意','跟著心走，今天可能收到浪漫的邀約或美好的靈感。','浪漫之餘也要腳踏實地，別只說不做。'],
+  ['同理・溫柔・情感豐沛','你的溫柔今天能療癒身邊的人，也記得溫柔對待自己。','別把別人的情緒全部吸進來，適時畫出界線。'],
+  ['情緒成熟・包容・穩定','面對情緒起伏時保持平穩，你的冷靜會成為大家的依靠。','別壓抑自己的感受，穩定不等於不能難過。'],
+ ]},
+ {key:'swords',prefix:'swords',zh:'寶劍',en:'Swords',el:'風・思考',emoji:'🌬️',data:[
+  ['清晰・真相・突破','腦袋變得很清楚，今天適合做決定、說出真心話。','說真話也要顧及語氣，太鋒利的話會傷人。'],
+  ['猶豫・僵持・兩難','你可能正卡在兩難，試著拿下眼罩，看清楚真實的狀況。','不做決定也是一種決定，拖太久只會更難。'],
+  ['心痛・失望・悲傷','今天可能有讓人難過的事，允許自己好好感受，痛會慢慢過去。','別把一句話放大成全部，也別把情緒悶在心裡。'],
+  ['休息・恢復・暫停','身心需要充電了，今天替自己安排一點時間好好休息。','休息不是偷懶，硬撐反而會讓效率更差。'],
+  ['衝突・輸贏・代價','有時候贏了爭論卻輸了關係，想想什麼才是真正重要的。','避免冷嘲熱諷，也別陷入不必要的口舌之爭。'],
+  ['過渡・離開困境・慢慢好轉','你正在往更平靜的地方前進，雖然慢，但方向是對的。','帶著傷往前走沒關係，不用逼自己立刻好起來。'],
+  ['策略・機智・隱瞞','今天需要動點腦筋找方法，但要確保手段光明正大。','小心有人說一套做一套，也提醒自己別抄捷徑。'],
+  ['受困・自我設限・無力感','覺得被困住了？其實綁住你的多半是想法，試著換個念頭。','別一直說「我做不到」，先從最小的一步開始。'],
+  ['焦慮・失眠・擔心','腦中的擔心可能比現實更可怕，把煩惱寫下來，會輕鬆一點。','睡前少滑手機，焦慮時找人聊聊，不要獨自扛著。'],
+  ['谷底・結束・最壞已過去','最糟的時刻已經過去了，天邊正在亮起來，接下來只會更好。','別再反覆回想痛苦的事，讓它在今天畫下句點。'],
+  ['好奇・觀察・新想法','今天適合學習新知、蒐集資訊，保持敏銳的觀察力。','說話前先想一想，別因為好奇而變成八卦。'],
+  ['果斷・快速行動・直言','腦筋轉得快，今天適合迅速處理積壓的事情。','衝太快容易說錯話，越急的事越要緩一緩。'],
+  ['理性・獨立・清楚界線','用清晰的頭腦和誠實的態度面對問題，你比自己想的更堅強。','理性之外也保留一點溫度，別讓人覺得太冷淡。'],
+  ['判斷力・權威・公正','今天適合做重要判斷，用邏輯和事實說話。','講道理時也體諒別人的難處，別太嚴苛。'],
+ ]},
+ {key:'pentacles',prefix:'pents',zh:'錢幣',en:'Pentacles',el:'土・物質',emoji:'🌿',data:[
+  ['新機會・財富種子・實際開始','一個實際的好機會出現了，可能跟金錢、工作或健康有關，把握它。','機會要靠行動落地，別只是想想。'],
+  ['平衡・多工・彈性','今天事情多，靈活調整節奏，就能把每顆球都接住。','別同時塞太多事，記得排出優先順序。'],
+  ['合作・技能・團隊','跟別人合作會讓事情做得更好，今天適合分工和交流專業。','多聽取意見，也大方說出你的專業建議。'],
+  ['保守・守財・安全感','今天適合整理財務、守住資源，給自己一份安心感。','守護很好，但抓太緊會讓自己和身邊的人喘不過氣。'],
+  ['匱乏感・困難・求助','覺得辛苦的時候，溫暖的窗就在旁邊，開口求助沒關係。','留意開銷與身體狀況，別因為逞強而硬撐。'],
+  ['給予・接受・分享','今天適合分享資源或接受幫忙，給予和接受都是美好的流動。','付出要量力而為，也別讓人情變成壓力。'],
+  ['耐心・等待收成・評估','努力需要時間發芽，今天適合檢視成果、調整下一步。','別因為進度慢就灰心，也別只是一直空等。'],
+  ['專注・練習・精進','一步一步、專心做好眼前的事，今天的累積會成為未來的實力。','別追求完美到停不下來，也記得讓眼睛休息。'],
+  ['自給自足・享受成果・優雅','你靠自己的努力打造了舒適的生活，今天好好享受吧。','獨立很棒，但偶爾也可以讓別人照顧你。'],
+  ['家族・傳承・長久的富足','今天適合思考長遠的規劃，珍惜家人和代代相傳的溫暖。','別只顧物質的累積，陪伴才是最珍貴的財富。'],
+  ['學習・踏實・新目標','今天適合開始學一樣新技能，或替目標訂下第一個小計畫。','計畫要具體可行，別只停在筆記本上。'],
+  ['穩定・負責・按部就班','慢慢來比較快，今天用穩定的步調完成該做的事。','太求穩可能錯過變化，偶爾也試試新方法。'],
+  ['照顧・務實・溫暖的家','今天適合打理生活、照顧家人與自己的身體，讓家更舒服。','照顧大家之餘，也留一點時間給自己。'],
+  ['富足・成就・可靠','你的努力帶來穩定的成果，今天適合做務實的財務或事業決定。','別只用金錢衡量價值，也多陪陪身邊的人。'],
+ ]},
+];
+const RANKS_EN=['Ace','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Page','Knight','Queen','King'];
+const RANKS_ZH=['王牌','二','三','四','五','六','七','八','九','十','侍者','騎士','皇后','國王'];
+const ROMAN=['0','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI'];
+const pad=n=>String(n).padStart(2,'0');
+
+const CARDS=[];
+MAJOR.forEach((m,i)=>CARDS.push({id:i,suit:'major',file:`major-${pad(i)}-${m[0]}.webp`,en:m[1],zh:m[2],num:ROMAN[i],kw:m[3],msg:m[4],care:m[5]}));
+SUITS.forEach(s=>s.data.forEach((d,j)=>{
+  const r=RANKS_EN[j];
+  CARDS.push({id:CARDS.length,suit:s.key,file:`${s.prefix}-${pad(j+1)}-${r.toLowerCase()}-of-${s.key}.webp`,
+    en:`${r} of ${s.en}`,zh:s.zh+RANKS_ZH[j],num:'',kw:d[0],msg:d[1],care:d[2]});
+}));
+/* 牌組：每套牌放在 cards/<資料夾>/ 裡，檔名都一樣 */
+const DECKS={
+  rws:{name:'傳統偉特塔羅',dir:'rws',ratio:286/513,ready:true},
+  forest:{name:'森林小動物',dir:'forest',ratio:2/3,ready:true},
+  dudu:{name:'嘟嘟一家',dir:'dudu',ratio:2/3,ready:false},
+};
+const curDeck=()=>{const d=(DB.settings||{}).deck;return DECKS[d]&&DECKS[d].ready?d:'forest';};
+const deckOf=rec=>(rec&&DECKS[rec.deck]&&DECKS[rec.deck].ready)?rec.deck:'forest';
+const img=(c,thumb,deck)=>`cards/${DECKS[deck||curDeck()].dir}/${thumb?'thumb/':''}${c.file}`;
+const arStyle=deck=>`aspect-ratio:${DECKS[deck].ratio}`;
+const cardTitle=c=>c.suit==='major'?`${c.num} · ${c.zh}`:c.zh;
+
+/* =========================================================
+   2. 資料儲存（存在這支手機的瀏覽器裡）
+   ========================================================= */
+const KEY='leimeng-tarot-v1';
+let DB={days:{}};
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.days)DB=d;}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(DB));return true;}catch(e){toast('⚠️ 儲存失敗，請確認瀏覽器沒有開無痕模式');return false;}}
+const keyOf=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayKey=()=>keyOf(new Date());
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const WD='日一二三四五六';
+function prettyDate(k){const [y,m,d]=k.split('-').map(Number);const dt=new Date(y,m-1,d);return `${y} 年 ${m} 月 ${d} 日（${WD[dt.getDay()]}）`;}
+const MOODS=['🥰','😊','😐','😔','😣'];
+const BACKS={art:['森林插畫','',''],blue:['霧藍','#9fb2c2','#7f95a8'],milk:['奶茶','#d8c3a8','#b39878'],rose:['豆沙粉','#d9b5ad','#b78d85'],
+  sage:['鼠尾草綠','#b6c3a9','#8c9c80'],lav:['薰衣草紫','#c2b7d2','#998cb0'],night:['夜空藍','#5f6d88','#3d4862']};
+function applyBack(){const k=(DB.settings||{}).back||'art';const b=BACKS[k]||BACKS.blue;
+  document.body.classList.toggle('art-back',k==='art');
+  const r=document.documentElement.style;if(b[1]){r.setProperty('--back1',b[1]);r.setProperty('--back2',b[2]);}
+  r.setProperty('--ar',DECKS[curDeck()].ratio);}
+function setDeck(k){if(!DECKS[k].ready)return;DB.settings={...(DB.settings||{}),deck:k};save();applyBack();renderSet();toast(`牌組換成「${DECKS[k].name}」`);}
+function setBack(k){DB.settings={...(DB.settings||{}),back:k};save();applyBack();renderSet();toast(`牌背換成「${BACKS[k][0]}」`);}
+const FITS=['','完全不像','有一點點','普通','蠻準的','超準！'];
+
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2200);}
+
+/* =========================================================
+   3. 今日頁
+   ========================================================= */
+let curKey=todayKey();
+function renderToday(justDrawn){
+  const el=document.getElementById('tab-today');
+  const rec=DB.days[curKey];
+  let h=backupBanner()+`<div class="h1">今日指引</div>
+    <div class="meta">${prettyDate(curKey)}</div>`;
+  if(!rec){
+    h+=`<div class="stage idle" id="stage"><div class="flipper" id="flipper">
+          <div class="face back"><span class="sym">✦</span></div>
+          <div class="face front"><img id="frontImg" alt=""></div>
+        </div></div>
+        <p class="hint" id="hint">深呼吸，想著今天的自己<br>準備好了就點一下牌</p>`;
+    el.innerHTML=h;
+    document.getElementById('stage').onclick=drawCard;
+    return;
+  }
+  const c=CARDS[rec.card],dk=deckOf(rec);
+  h+=`<img class="card-img" src="${img(c,0,dk)}" alt="${c.en}" onclick="zoom('${img(c,0,dk)}')" style="${arStyle(dk)}${justDrawn?';animation:fade .6s ease':''}">
+    <p class="cname">${cardTitle(c)}</p>
+    <div class="cen">${c.en.toUpperCase()}</div>
+    <div class="chips">${c.kw.split('・').map(k=>`<span class="chip">${k}</span>`).join('')}</div>
+    <div class="box"><div class="lbl">今日指引</div><p class="letter">${c.msg}</p></div>
+    <div class="box"><div class="lbl">需要注意</div><p>${c.care}</p></div>
+    <div class="btns">
+      <button class="btn line" onclick="shareCard('${curKey}',this)">💬 分享到 LINE</button>
+      <button class="btn ghost" onclick="saveImage('${curKey}',this)">⬇️ 儲存圖片</button>
+    </div>
+    <div class="box"><div class="lbl">🌅 早上的直覺</div>
+      <div class="sublbl" style="margin-top:0">看到這張牌，你的第一個感覺是？</div>
+      <textarea class="in" id="intuition" placeholder="例如：今天好像要放慢一點…" rows="2">${esc(rec.intuition)}</textarea>
+    </div>
+    <div class="box" id="diaryBox"></div>`;
+  // 去年的今天
+  const [y,m,d]=curKey.split('-');const ly=`${+y-1}-${m}-${d}`;
+  if(DB.days[ly]){const lc=CARDS[DB.days[ly].card];
+    h+=`<div class="box lastyear" onclick="openDay('${ly}')"><img src="${img(lc,1,deckOf(DB.days[ly]))}" alt=""><div><div class="lbl">🕰️ 去年的今天</div>${cardTitle(lc)}</div></div>`;}
+  el.innerHTML=h;
+  const it=document.getElementById('intuition');
+  it.onblur=()=>{rec.intuition=it.value.trim();save();};
+  renderDiaryForm(document.getElementById('diaryBox'),curKey,'🌙 今晚的日記');
+}
+
+/* 超過 30 天沒備份就提醒 */
+function backupBanner(){
+  const keys=Object.keys(DB.days).sort();if(!keys.length)return '';
+  const last=(DB.settings||{}).lastExport;
+  const since=last||new Date(keys[0]).getTime();
+  const days=Math.floor((Date.now()-since)/864e5);
+  if(days<30)return '';
+  return `<div class="banner">📦<span>${last?`已經 ${days} 天沒有備份了`:'還沒備份過喔'}，記得匯出一下～</span><button class="btn small" onclick="exportData();renderToday()">匯出</button></div>`;
+}
+function drawCard(){
+  const stage=document.getElementById('stage');
+  if(stage.dataset.busy)return; stage.dataset.busy=1;
+  const r=new Uint32Array(1);crypto.getRandomValues(r);
+  const idx=r[0]%78;
+  const fi=document.getElementById('frontImg');
+  const go=()=>{
+    stage.classList.remove('idle');
+    document.getElementById('flipper').classList.add('flipped');
+    document.getElementById('hint').textContent='✨';
+    DB.days[curKey]={card:idx,deck:curDeck(),drawnAt:Date.now()};save();
+    setTimeout(()=>renderToday(true),1500);
+  };
+  fi.onload=go;fi.onerror=go;fi.src=img(CARDS[idx],0,curDeck());
+}
+
+/* 日記表單（今日頁和月曆彈窗共用） */
+function renderDiaryForm(box,key,title){
+  const rec=DB.days[key];
+  const st={mood:rec.mood??null,fit:rec.fit||0};
+  box.innerHTML=`<div class="lbl">${title}</div>
+    <div class="sublbl" style="margin-top:0">今天的心情</div>
+    <div class="moods">${MOODS.map((m,i)=>`<button class="mood${st.mood===i?' on':''}" data-i="${i}">${m}</button>`).join('')}</div>
+    <div class="sublbl">今天發生了什麼？</div>
+    <textarea class="in" rows="4" placeholder="寫下今天的事、心情，或跟牌意有關的小發現…">${esc(rec.diary)}</textarea>
+    <div class="sublbl">跟今天的牌吻合嗎？</div>
+    <div class="stars">${[1,2,3,4,5].map(n=>`<button class="star${n<=st.fit?' on':''}" data-n="${n}">★</button>`).join('')}<span class="fitlbl">${FITS[st.fit]||'點星星評分'}</span></div>
+    <div class="btns"><button class="btn" data-save>儲存日記</button></div>
+    <div class="saved">${rec.savedAt?'上次儲存：'+new Date(rec.savedAt).toLocaleString('zh-TW',{hour12:false}):''}</div>`;
+  box.querySelectorAll('.mood').forEach(b=>b.onclick=()=>{
+    st.mood=+b.dataset.i;box.querySelectorAll('.mood').forEach(x=>x.classList.toggle('on',x===b));});
+  box.querySelectorAll('.star').forEach(b=>b.onclick=()=>{
+    st.fit=+b.dataset.n;box.querySelectorAll('.star').forEach(x=>x.classList.toggle('on',+x.dataset.n<=st.fit));
+    box.querySelector('.fitlbl').textContent=FITS[st.fit];});
+  box.querySelector('[data-save]').onclick=()=>{
+    rec.mood=st.mood;rec.fit=st.fit;rec.diary=box.querySelector('textarea').value.trim();rec.savedAt=Date.now();
+    if(save()){toast('🌙 日記已儲存');box.querySelector('.saved').textContent='上次儲存：'+new Date(rec.savedAt).toLocaleString('zh-TW',{hour12:false});}
+    if(document.getElementById('tab-cal').classList.contains('active'))renderCal();
+  };
+}
+
+/* =========================================================
+   4. 分享圖（canvas 畫出「今日指引」卡片）
+   ========================================================= */
+function loadImg(src){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=src;});}
+function wrap(ctx,text,maxW){
+  const lines=[];let line='';
+  for(const ch of text){
+    const t=line+ch;
+    if(ctx.measureText(t).width>maxW && line && !'，。！？、」）…'.includes(ch)){lines.push(line);line=ch;}
+    else line=t;
+  }
+  if(line)lines.push(line);return lines;
+}
+async function makeShareBlob(key){
+  const rec=DB.days[key],c=CARDS[rec.card];
+  const S='"Noto Serif TC","Songti TC",serif';
+  try{await Promise.all([document.fonts.load(`700 80px ${S}`,'今日指引'+prettyDate(key)+c.zh),document.fonts.load(`500 40px ${S}`,c.msg+c.care+c.kw)]);}catch(e){}
+  const W=1080,H=1920,cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const x=cv.getContext('2d');
+  x.fillStyle='#f6f2ea';x.fillRect(0,0,W,H);
+  x.textAlign='center';x.textBaseline='alphabetic';
+  x.fillStyle='#3c4a3e';x.font=`700 84px ${S}`;x.fillText('今日指引',W/2,200);
+  x.fillStyle='#8a8478';x.font=`500 38px ${S}`;x.fillText(prettyDate(key),W/2,275);
+  // 牌面
+  const dk=deckOf(rec),im=await loadImg(img(c,0,dk));
+  const ch=840,cw=Math.round(ch*DECKS[dk].ratio),cx=(W-cw)/2,cy=360,r=26;
+  x.save();x.shadowColor='rgba(80,70,50,.25)';x.shadowBlur=40;x.shadowOffsetY=16;
+  x.fillStyle='#fff';x.beginPath();x.roundRect(cx,cy,cw,ch,r);x.fill();x.restore();
+  x.save();x.beginPath();x.roundRect(cx,cy,cw,ch,r);x.clip();x.drawImage(im,cx,cy,cw,ch);x.restore();
+  // 牌名
+  let y=cy+ch+90;
+  x.fillStyle='#3c4a3e';x.font=`700 54px ${S}`;x.fillText(cardTitle(c),W/2,y);
+  y+=56;x.fillStyle='#8a8478';x.font=`500 30px ${S}`;x.fillText(c.en.toUpperCase().split('').join(' '),W/2,y);
+  y+=58;x.fillStyle='#a8905e';x.font=`500 34px ${S}`;x.fillText(c.kw.split('・').join('  ·  '),W/2,y);
+  y+=40;x.strokeStyle='#d9ccb6';x.lineWidth=2;x.beginPath();x.moveTo(W/2-120,y);x.lineTo(W/2+120,y);x.stroke();
+  // 今日指引
+  x.fillStyle='#3c4a3e';x.font=`500 42px ${S}`;
+  y+=74;for(const l of wrap(x,c.msg,860)){x.fillText(l,W/2,y);y+=66;}
+  x.fillStyle='#8a8478';x.font=`500 34px ${S}`;
+  y+=14;for(const l of wrap(x,'需要注意：'+c.care,860)){x.fillText(l,W/2,y);y+=54;}
+  // 依內容高度裁切，底部不留大片空白
+  const FH=Math.min(H,Math.round(y+60)),out=document.createElement('canvas');out.width=W;out.height=FH;
+  const o=out.getContext('2d');o.drawImage(cv,0,0);
+  o.strokeStyle='#e3d9c8';o.lineWidth=3;o.strokeRect(36,36,W-72,FH-72);
+  return await new Promise((ok,no)=>out.toBlob(b=>b?ok(b):no(new Error('blob')),'image/png'));
+}
+function shareText(key){const c=CARDS[DB.days[key].card];
+  return `🃏 今日指引 ${key}\n${cardTitle(c)}｜${c.en}\n${c.msg}`;}
+
+async function shareCard(key,btn){
+  const old=btn.innerHTML;btn.disabled=true;btn.innerHTML='製作中…';
+  let blob;
+  try{blob=await makeShareBlob(key);}
+  catch(e){btn.disabled=false;btn.innerHTML=old;toast('⚠️ 分享圖做不出來，請用 GitHub Pages 網址開啟');return;}
+  btn.disabled=false;btn.innerHTML=old;
+  const file=new File([blob],`tarot-${key}.png`,{type:'image/png'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:'今日指引',text:shareText(key)});return;}
+    catch(e){if(e.name==='AbortError')return;}
+  }
+  showSharePreview(blob,key);
+}
+async function saveImage(key,btn){
+  const old=btn.innerHTML;btn.disabled=true;btn.innerHTML='製作中…';
+  try{const blob=await makeShareBlob(key);showSharePreview(blob,key);}
+  catch(e){toast('⚠️ 圖片做不出來，請用 GitHub Pages 網址開啟');}
+  btn.disabled=false;btn.innerHTML=old;
+}
+function showSharePreview(blob,key){
+  const url=URL.createObjectURL(blob);
+  openSheet(`<button class="close" onclick="closeSheet()">✕</button>
+    <div class="h2">分享圖</div>
+    <img class="share-preview" src="${url}" alt="分享圖">
+    <p class="hint">📱 手機：長按圖片 →「儲存影像」或直接分享</p>
+    <div class="btns">
+      <a class="btn ghost" href="${url}" download="tarot-${key}.png" style="text-decoration:none">⬇️ 下載圖片</a>
+      <a class="btn line" href="https://line.me/R/share?text=${encodeURIComponent(shareText(key))}" target="_blank" style="text-decoration:none">💬 LINE 傳文字</a>
+    </div>`);
+}
+
+/* =========================================================
+   5. 月曆日記
+   ========================================================= */
+let calY=new Date().getFullYear(),calM=new Date().getMonth();
+function renderCal(){
+  const el=document.getElementById('tab-cal');
+  const first=new Date(calY,calM,1),days=new Date(calY,calM+1,0).getDate();
+  let cells='';for(let i=0;i<first.getDay();i++)cells+='<div class="cell empty"></div>';
+  let drawn=0,wrote=0,fitSum=0,fitN=0;
+  for(let d=1;d<=days;d++){
+    const k=`${calY}-${pad(calM+1)}-${pad(d)}`,rec=DB.days[k],t=k===todayKey()?' today':'';
+    if(rec){const c=CARDS[rec.card];drawn++;if(rec.diary)wrote++;if(rec.fit){fitSum+=rec.fit;fitN++;}
+      cells+=`<div class="cell has${t}" onclick="openDay('${k}')"><img src="${img(c,1,deckOf(rec))}" alt="" loading="lazy"><span class="d">${d}</span>${rec.diary?'<span class="dot">✎</span>':''}</div>`;}
+    else cells+=`<div class="cell${t}">${d}</div>`;
+  }
+  el.innerHTML=`<div class="eyebrow">TAROT DIARY</div><div class="h1">塔羅日記</div>
+    <div class="calhead"><button onclick="calMove(-1)">‹</button><span class="mon">${calY} 年 ${calM+1} 月</span><button onclick="calMove(1)">›</button></div>
+    <div class="grid7">${[...WD].map(w=>`<div class="wd">${w}</div>`).join('')}${cells}</div>
+    <div class="summary">
+      <div class="stat"><b>${drawn}</b><span>抽牌天數</span></div>
+      <div class="stat"><b>${wrote}</b><span>寫日記天數</span></div>
+      <div class="stat"><b>${fitN?(fitSum/fitN).toFixed(1):'–'}</b><span>平均吻合 ★</span></div>
+    </div>
+    <p class="hint" style="margin-top:14px">點有牌的日子，可以查看或補寫日記</p>`;
+}
+function calMove(n){calM+=n;if(calM<0){calM=11;calY--;}if(calM>11){calM=0;calY++;}renderCal();}
+
+function openDay(k){
+  const rec=DB.days[k];if(!rec)return;const c=CARDS[rec.card],dk=deckOf(rec);
+  openSheet(`<button class="close" onclick="closeSheet()">✕</button>
+    <div class="eyebrow">${prettyDate(k)}</div>
+    <img class="card-img" src="${img(c,0,dk)}" style="${arStyle(dk)}" alt="" onclick="zoom('${img(c,0,dk)}')">
+    <p class="cname">${cardTitle(c)}</p><div class="cen">${c.en.toUpperCase()}</div>
+    <div class="chips">${c.kw.split('・').map(x=>`<span class="chip">${x}</span>`).join('')}</div>
+    <div class="box"><div class="lbl">今日指引</div><p class="letter">${c.msg}</p></div>
+    <div class="box"><div class="lbl">需要注意</div><p>${c.care}</p></div>
+    ${rec.intuition?`<div class="box"><div class="lbl">🌅 早上的直覺</div><p>${esc(rec.intuition)}</p></div>`:''}
+    <div class="box" id="sheetDiary"></div>
+    <div class="btns"><button class="btn line" onclick="shareCard('${k}',this)">💬 分享這天的牌</button></div>`);
+  renderDiaryForm(document.getElementById('sheetDiary'),k,'🌙 這天的日記');
+}
+
+/* =========================================================
+   6. 圖鑑 + 統計
+   ========================================================= */
+let deckFilter='all';
+function renderDeck(){
+  const el=document.getElementById('tab-deck');
+  const cnt=Array(78).fill(0),fit=Array(78).fill(0),fitN=Array(78).fill(0);
+  const suitCnt={major:0,wands:0,cups:0,swords:0,pentacles:0};let total=0;
+  Object.values(DB.days).forEach(r=>{cnt[r.card]++;total++;suitCnt[CARDS[r.card].suit]++;if(r.fit){fit[r.card]+=r.fit;fitN[r.card]++;}});
+  const got=cnt.filter(n=>n).length;
+  let top=-1;cnt.forEach((n,i)=>{if(n&&(top<0||n>cnt[top]))top=i;});
+  const suitRows=[['major','✨ 大阿爾克那'],...SUITS.map(s=>[s.key,`${s.emoji} ${s.zh}`])];
+  const max=Math.max(1,...Object.values(suitCnt));
+  const list=CARDS.filter(c=>deckFilter==='all'||c.suit===deckFilter);
+  el.innerHTML=`<div class="eyebrow">COLLECTION</div><div class="h1">牌卡圖鑑</div>
+    <div class="summary">
+      <div class="stat"><b>${got}<small style="font-size:13px">/78</small></b><span>已收集</span></div>
+      <div class="stat"><b>${total}</b><span>總抽牌次數</span></div>
+      <div class="stat" ${top>=0?`onclick="openCard(${top})" style="cursor:pointer"`:''}><b style="font-size:15px;line-height:1.9">${top>=0?CARDS[top].zh:'–'}</b><span>最常抽到${top>=0?` ×${cnt[top]}`:''}</span></div>
+    </div>
+    <div class="box"><div class="lbl">花色分布</div>
+      ${suitRows.map(([k,n])=>`<div class="bar"><span class="t">${n}</span><span class="track"><span class="fill" style="display:block;width:${suitCnt[k]/max*100}%"></span></span><span class="v">${suitCnt[k]}</span></div>`).join('')}
+    </div>
+    <div class="filters">${[['all','全部'],...suitRows].map(([k,n])=>`<button class="${deckFilter===k?'on':''}" onclick="deckFilter='${k}';renderDeck()">${n}</button>`).join('')}</div>
+    <div class="deckgrid">${list.map(c=>`<div class="dc${cnt[c.id]?' got':''}" onclick="openCard(${c.id})"><img src="${img(c,1)}" alt="${c.en}" loading="lazy">${cnt[c.id]?`<span class="n">×${cnt[c.id]}</span>`:''}</div>`).join('')}</div>
+    <p class="hint" style="margin-top:14px">抽過的牌會亮起來 ✨</p>`;
+}
+function openCard(id){
+  const c=CARDS[id];
+  const dates=Object.keys(DB.days).filter(k=>DB.days[k].card===id).sort().reverse();
+  const fits=dates.map(k=>DB.days[k].fit).filter(Boolean);
+  openSheet(`<button class="close" onclick="closeSheet()">✕</button>
+    <img class="card-img" src="${img(c)}" alt="" onclick="zoom('${img(c)}')">
+    <p class="cname">${cardTitle(c)}</p><div class="cen">${c.en.toUpperCase()}</div>
+    <div class="chips">${c.kw.split('・').map(x=>`<span class="chip">${x}</span>`).join('')}</div>
+    <div class="box"><div class="lbl">今日指引</div><p class="letter">${c.msg}</p></div>
+    <div class="box"><div class="lbl">需要注意</div><p>${c.care}</p></div>
+    <div class="box"><div class="lbl">我的紀錄</div>
+      ${dates.length?`<p>抽到 ${dates.length} 次${fits.length?`・平均吻合 ${(fits.reduce((a,b)=>a+b,0)/fits.length).toFixed(1)} ★`:''}</p>
+      <div class="datelist">${dates.map(k=>`<button onclick="openDay('${k}')">${k}</button>`).join('')}</div>`:'<p style="color:var(--sub)">還沒抽到過這張牌</p>'}
+    </div>`);
+}
+
+/* =========================================================
+   7. 設定：備份 / 匯入 / 清除
+   ========================================================= */
+function renderSet(){
+  const n=Object.keys(DB.days).length;
+  document.getElementById('tab-set').innerHTML=`<div class="eyebrow">SETTINGS</div><div class="h1">設定</div>
+    <div class="box">
+      <div class="row"><div>📦 匯出備份<small>把所有抽牌與日記存成一個檔案（目前 ${n} 天）</small></div><button class="btn small" onclick="exportData()">匯出</button></div>
+      <div class="row"><div>📥 匯入備份<small>換手機時，把備份檔匯入就能接續</small></div><button class="btn small ghost" onclick="document.getElementById('importFile').click()">選擇檔案</button></div>
+      <div class="row"><div>🗑️ 清除所有資料<small>無法復原，建議先匯出備份</small></div><button class="btn small ghost" id="clearBtn" onclick="clearAll(this)">清除</button></div>
+    </div>
+    <div class="box"><div class="lbl">🃏 塔羅牌組</div>
+      <div class="decks">${Object.entries(DECKS).map(([k,d])=>`<button class="dk${curDeck()===k?' on':''}" ${d.ready?`onclick="setDeck('${k}')"`:'disabled'}>${d.ready?`<img src="cards/${d.dir}/thumb/major-00-the-fool.webp" alt="">`:'<span class="soon">🎨</span>'}${d.name}${d.ready?'':'<br><small>準備中</small>'}</button>`).join('')}</div>
+      <p style="font-size:12px;color:var(--sub);margin:8px 0 0">換牌組不會影響以前的紀錄，每天會顯示當天抽牌時用的牌組。</p>
+    </div>
+    <div class="box"><div class="lbl">🎴 牌背</div>
+      <div class="backs">${Object.entries(BACKS).map(([k,b])=>`<button class="bk${((DB.settings||{}).back||'art')===k?' on':''}" onclick="setBack('${k}')"><i style="background:${k==='art'?'url(cards/back.webp) center/cover':`linear-gradient(160deg,${b[1]},${b[2]})`}" class="${k==='art'?'art':''}"></i>${b[0]}</button>`).join('')}</div>
+    </div>
+    <input type="file" id="importFile" accept=".json,application/json" hidden onchange="importData(this)">
+    <div class="box"><div class="lbl">關於資料</div>
+      <p style="font-size:13px;color:var(--sub)">資料只存在「這支手機的這個瀏覽器」裡，不會上傳到任何地方。<br>清除瀏覽器資料或換手機會不見，建議每個月匯出一次備份 🙏<br>加到主畫面：Safari 分享 →「加入主畫面」。</p>
+    </div>
+    <p class="hint" style="margin-top:18px">${BRAND} · Daily Tarot v1.1<br><small>傳統偉特塔羅：Pamela Colman Smith 1909（公有領域）</small></p>`;
+}
+function exportData(){
+  const blob=new Blob([JSON.stringify(DB,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`塔羅日記-備份-${todayKey()}.json`;
+  document.body.appendChild(a);a.click();a.remove();DB.settings={...(DB.settings||{}),lastExport:Date.now()};save();toast('📦 備份已下載');
+}
+function importData(input){
+  const f=input.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!d.days)throw 0;
+      let n=0;for(const k in d.days){if(typeof d.days[k].card==='number'){DB.days[k]={...DB.days[k],...d.days[k]};n++;}}
+      save();toast(`📥 已匯入 ${n} 天`);renderAll();}
+    catch(e){toast('⚠️ 這不是正確的備份檔');}
+    input.value='';};
+  rd.readAsText(f);
+}
+function clearAll(btn){
+  if(!btn.dataset.sure){btn.dataset.sure=1;btn.textContent='再按一次確認';btn.style.color='#b55';setTimeout(()=>{delete btn.dataset.sure;btn.textContent='清除';btn.style.color='';},3000);return;}
+  DB={days:{}};save();toast('已清除');renderAll();
+}
+
+/* =========================================================
+   8. 共用：彈窗、放大、分頁切換
+   ========================================================= */
+function openSheet(html){const m=document.getElementById('modal');document.getElementById('sheet').innerHTML=html;m.classList.remove('hidden');document.getElementById('sheet').scrollTop=0;}
+function closeSheet(){document.getElementById('modal').classList.add('hidden');}
+document.getElementById('modal').onclick=e=>{if(e.target.id==='modal')closeSheet();};
+function zoom(src){const z=document.getElementById('zoom');z.querySelector('img').src=src;z.classList.remove('hidden');}
+document.getElementById('zoom').onclick=()=>document.getElementById('zoom').classList.add('hidden');
+
+const RENDER={today:()=>renderToday(),cal:renderCal,deck:renderDeck,set:renderSet};
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.id==='tab-'+b.dataset.tab));
+  RENDER[b.dataset.tab]();window.scrollTo(0,0);
+});
+function renderAll(){renderToday();renderCal();renderDeck();renderSet();}
+
+// 過了午夜回到 App 時，自動換成新的一天
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&todayKey()!==curKey){curKey=todayKey();renderToday();}});
+
+load();applyBack();renderToday();
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
