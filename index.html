@@ -179,6 +179,8 @@ textarea.in:focus{border-color:var(--milk)}
 .dstars{color:var(--gold);letter-spacing:2px;font-size:17px}.dstars i{color:var(--line);font-style:normal}
 .dtext{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;line-height:1.8}
 .dempty{color:var(--sub);font-size:14px;margin:6px 0 0}
+.in1{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;font:inherit;color:var(--ink);outline:none;margin-top:8px;font-size:16px}
+.in1:focus{border-color:var(--milk)}
 .countdown{text-align:center;font-size:13px;color:var(--sub);margin:14px 0 -8px}
 .countdown b{color:var(--gold);font-weight:600}
 .decktabs{display:flex;gap:6px;margin:12px 0 4px}
@@ -322,11 +324,11 @@ SUITS.forEach(s=>s.data.forEach((d,j)=>{
 const DECKS={
   rws:{name:'傳統偉特塔羅',dir:'rws',ratio:286/513,ready:true,back:'cards/rws/back.webp'},
   forest:{name:'森林小動物',dir:'forest',ratio:2/3,ready:true,back:'cards/forest/back.webp'},
-  dudu:{name:'嘟嘟一家',dir:'dudu',ratio:2/3,ready:true,back:'cards/dudu/back.webp'},
+  dudu:{name:'嘟嘟一家',dir:'dudu',ratio:2/3,ready:true,v:2,back:'cards/dudu/back.webp?v=2'},
 };
 const curDeck=()=>{const d=(DB.settings||{}).deck;return DECKS[d]&&DECKS[d].ready?d:'forest';};
 const deckOf=rec=>(rec&&DECKS[rec.deck]&&DECKS[rec.deck].ready)?rec.deck:'forest';
-const img=(c,thumb,deck)=>`cards/${DECKS[deck||curDeck()].dir}/${thumb?'thumb/':''}${c.file}`;
+const img=(c,thumb,deck)=>{const d=DECKS[deck||curDeck()];return `cards/${d.dir}/${thumb?'thumb/':''}${c.file}${d.v?'?v='+d.v:''}`;};
 const arStyle=deck=>`aspect-ratio:${DECKS[deck].ratio}`;
 const cardTitle=c=>c.suit==='major'?`${c.num} · ${c.zh}`:c.zh;
 
@@ -392,14 +394,66 @@ async function initCloud(){
     });
   }catch(e){console.warn('cloud init',e);cloud.status='offline';refreshCloudUI();}
 }
-async function cloudLogin(){
+/* 登入：Google（瀏覽器用）＋ email／密碼（主畫面 App 用，iPhone 主畫面 App 常常跳不出 Google 視窗） */
+const isStandalone=()=>!!(navigator.standalone||matchMedia('(display-mode: standalone)').matches);
+const AUTH_ERR={'auth/invalid-credential':'email 或密碼不對','auth/wrong-password':'密碼不對','auth/user-not-found':'找不到這個帳號，請先在 Safari 用 Google 登入並設定密碼',
+  'auth/invalid-email':'email 格式不對','auth/too-many-requests':'嘗試太多次了，請稍後再試','auth/operation-not-allowed':'Firebase 還沒開啟「電子郵件/密碼」登入',
+  'auth/weak-password':'密碼至少要 6 個字','auth/network-request-failed':'網路連不上，請確認有網路','auth/provider-already-linked':'已經設定過密碼了',
+  'auth/email-already-in-use':'這個 email 已經有密碼了','auth/credential-already-in-use':'這個 email 已經有密碼了'};
+const authMsg=e=>AUTH_ERR[e.code]||('登入失敗（'+(e.code||e.message)+'）');
+function cloudLogin(){
   if(!cloud.ready){toast('雲端還沒連上，請確認有網路');return;}
+  const sa=isStandalone();
+  const google=`<button class="btn ${sa?'ghost':''}" style="width:100%" onclick="googleLogin()">用 Google 帳號登入</button>`;
+  const mail=`<div class="sublbl">${sa?'':'或用 '}email／密碼登入</div>
+      <input class="in1" id="lgEmail" type="email" autocomplete="username" placeholder="你的 Gmail">
+      <input class="in1" id="lgPw" type="password" autocomplete="current-password" placeholder="App 密碼">
+      <div class="btns"><button class="btn ${sa?'':'ghost'}" onclick="emailLogin()">登入</button></div>
+      <p class="hint" style="font-size:12px;margin:8px 0 0"><a href="#" onclick="resetPw();return false" style="color:var(--sub)">忘記密碼？寄重設信給我</a></p>`;
+  openSheet(`<button class="close" onclick="closeSheet()">✕</button><div class="h2">☁️ 登入雲端</div>
+    ${sa?`<p style="font-size:13px;color:var(--sub);margin:0 0 10px">主畫面的 App 比較常跳不出 Google 視窗，建議用 email／密碼登入。<br>還沒設定密碼的話：先用 Safari 打開網址、用 Google 登入，再到「設定」→「🔑 設定 App 密碼」。</p>${mail}<div class="sublbl" style="margin-top:16px">也可以試試</div>${google}`
+      :`${google}${mail}`}`);
+}
+async function googleLogin(){
   const A=cloud.A,p=new A.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});
-  try{await A.signInWithPopup(cloud.auth,p);}
+  try{await A.signInWithPopup(cloud.auth,p);closeSheet();toast('☁️ 登入成功');}
   catch(e){
     if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment','auth/web-storage-unsupported'].includes(e.code)){
-      try{await A.signInWithRedirect(cloud.auth,p);}catch(e2){toast('⚠️ 登入失敗：'+(e2.code||e2.message));}
-    }else if(e.code!=='auth/popup-closed-by-user'&&e.code!=='auth/cancelled-popup-request')toast('⚠️ 登入失敗：'+(e.code||e.message));
+      try{await A.signInWithRedirect(cloud.auth,p);}catch(e2){toast('⚠️ '+authMsg(e2));}
+    }else if(e.code!=='auth/popup-closed-by-user'&&e.code!=='auth/cancelled-popup-request')toast('⚠️ '+authMsg(e));
+    else if(isStandalone())toast('Google 視窗被關掉了，請改用 email／密碼登入');
+  }
+}
+async function emailLogin(){
+  const em=document.getElementById('lgEmail').value.trim(),pw=document.getElementById('lgPw').value;
+  if(!em||!pw){toast('請輸入 email 和密碼');return;}
+  try{await cloud.A.signInWithEmailAndPassword(cloud.auth,em,pw);closeSheet();toast('☁️ 登入成功');}
+  catch(e){toast('⚠️ '+authMsg(e));}
+}
+async function resetPw(){
+  const em=document.getElementById('lgEmail').value.trim();if(!em){toast('請先在上面輸入 email');return;}
+  try{await cloud.A.sendPasswordResetEmail(cloud.auth,em);toast('📧 重設密碼的信寄出了，請收信');}catch(e){toast('⚠️ '+authMsg(e));}
+}
+const hasPw=()=>!!(cloud.user&&cloud.user.providerData.some(p=>p.providerId==='password'));
+function pwSheet(){
+  openSheet(`<button class="close" onclick="closeSheet()">✕</button><div class="h2">🔑 ${hasPw()?'變更':'設定'} App 密碼</div>
+    <p style="font-size:13px;color:var(--sub);margin:0 0 10px">設定後，主畫面的 App 可以用「${esc(cloud.user.email)}」＋這組密碼登入，看到的是同一份日記。</p>
+    <input class="in1" id="pw1" type="password" autocomplete="new-password" placeholder="新密碼（至少 6 個字）">
+    <input class="in1" id="pw2" type="password" autocomplete="new-password" placeholder="再輸入一次">
+    <div class="btns"><button class="btn" onclick="savePw()">儲存密碼</button></div>`);
+}
+async function savePw(again){
+  const a=document.getElementById('pw1').value,b=document.getElementById('pw2').value,A=cloud.A,u=cloud.auth.currentUser;
+  if(a.length<6){toast('密碼至少要 6 個字');return;}if(a!==b){toast('兩次輸入的密碼不一樣');return;}
+  try{
+    if(hasPw())await A.updatePassword(u,a);
+    else await A.linkWithCredential(u,A.EmailAuthProvider.credential(u.email,a));
+    await u.reload();cloud.user=cloud.auth.currentUser;closeSheet();toast('🔑 密碼設定好了');renderSet();
+  }catch(e){
+    if(e.code==='auth/requires-recent-login'&&!again){
+      try{await A.reauthenticateWithPopup(u,new A.GoogleAuthProvider());return savePw(true);}catch(e2){toast('⚠️ '+authMsg(e2));return;}
+    }
+    toast('⚠️ '+authMsg(e));
   }
 }
 async function cloudLogout(){if(cloud.ready)await cloud.A.signOut(cloud.auth);toast('已登出，資料仍保留在這支手機');}
@@ -448,12 +502,14 @@ function refreshCloudUI(){const b=document.querySelector('.nav button.on').datas
 function cloudLine(){
   if(cloud.user){
     const st={syncing:'🔄 同步中…',ok:'✅ 已同步',error:'⚠️ 同步失敗，有網路時會再試'}[cloud.status]||'';
-    return `<div class="row"><div>☁️ 雲端同步<small>${esc(cloud.user.email||'')}<br>${st}</small></div><button class="btn small ghost" onclick="cloudLogout()">登出</button></div>`;
+    return `<div class="row"><div>☁️ 雲端同步<small>${esc(cloud.user.email||'')}<br>${st}</small></div><button class="btn small ghost" onclick="cloudLogout()">登出</button></div>
+      <div class="row"><div>🔑 App 密碼<small>${hasPw()?'已設定，主畫面 App 可以用 email＋密碼登入':'設定後，主畫面的 App 也能登入'}</small></div><button class="btn small ${hasPw()?'ghost':''}" onclick="pwSheet()">${hasPw()?'變更':'設定'}</button></div>`;
   }
   if(cloud.status==='loading')return `<div class="row"><div>☁️ 雲端同步<small>連線中…</small></div></div>`;
   if(cloud.status==='offline')return `<div class="row"><div>☁️ 雲端同步<small>目前連不上雲端（沒有網路？）</small></div><button class="btn small ghost" onclick="location.reload()">重試</button></div>`;
-  return `<div class="row"><div>☁️ 雲端同步<small>用 Google 登入後，手機、電腦都能看到同一份日記</small></div><button class="btn small" onclick="cloudLogin()">登入</button></div>`;
+  return `<div class="row"><div>☁️ 雲端同步<small>登入後，手機、電腦都能看到同一份日記</small></div><button class="btn small" onclick="cloudLogin()">登入</button></div>`;
 }
+
 
 /* =========================================================
    4. 今日頁
@@ -462,7 +518,7 @@ let curKey=todayKey();
 function countdownText(){const ms=nextResetMs(),h=Math.floor(ms/36e5),m=Math.ceil((ms%36e5)/6e4);
   return h?`${h} 小時 ${m===60?59:m} 分`:`${m} 分鐘`;}
 function topBanner(){
-  if(cloud.ready&&!cloud.user)return `<div class="banner">☁️<span>登入 Google 帳號，日記換手機也不怕不見</span><button class="btn small" onclick="cloudLogin()">登入</button></div>`;
+  if(cloud.ready&&!cloud.user)return `<div class="banner">☁️<span>登入雲端，日記換手機也不怕不見</span><button class="btn small" onclick="cloudLogin()">登入</button></div>`;
   if(!cloud.user)return backupBanner();
   return '';
 }
@@ -832,7 +888,7 @@ function renderSet(){
       <div class="row"><div>🗑️ 清除所有資料<small>${cloud.user?'會連雲端一起刪除，':''}無法復原，建議先匯出備份</small></div><button class="btn small ghost" id="clearBtn" onclick="clearAll(this)">清除</button></div>
     </div>
     <div class="box"><div class="lbl">🃏 塔羅牌組</div>
-      <div class="decks">${Object.entries(DECKS).map(([k,d])=>`<button class="dk${curDeck()===k?' on':''}" ${d.ready?`onclick="setDeck('${k}')"`:'disabled'}>${d.ready?`<img src="cards/${d.dir}/thumb/major-00-the-fool.webp" alt="">`:'<span class="soon">🎨</span>'}${d.name}${d.ready?'':'<br><small>準備中</small>'}</button>`).join('')}</div>
+      <div class="decks">${Object.entries(DECKS).map(([k,d])=>`<button class="dk${curDeck()===k?' on':''}" ${d.ready?`onclick="setDeck('${k}')"`:'disabled'}>${d.ready?`<img src="${img(CARDS[0],1,k)}" alt="">`:'<span class="soon">🎨</span>'}${d.name}${d.ready?'':'<br><small>準備中</small>'}</button>`).join('')}</div>
       <p style="font-size:12px;color:var(--sub);margin:8px 0 0">換牌組不會影響以前的紀錄，每天會顯示當天抽牌時用的牌組。</p>
     </div>
     <div class="box"><div class="lbl">🎴 牌背</div>
